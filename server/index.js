@@ -4,7 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 import billplzRoutes from './routes/billplz.js';
-
+const oauthRoutes = require("./routes/oauth");
 dotenv.config();
 
 const app = express();
@@ -12,6 +12,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use("/oauth", oauthRoutes);
 
 // Sambungkan ke MongoDB
 mongoose.connect(process.env.MONGO_URI, {
