@@ -13,6 +13,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use("/oauth", oauthRoutes);
+app.use("/oauth", oauthRoutes);
 
 // Sambungkan ke MongoDB
 mongoose.connect(process.env.MONGO_URI, {

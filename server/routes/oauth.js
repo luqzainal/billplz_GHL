@@ -17,7 +17,7 @@ router.get("/callback", async (req, res) => {
     }
 
     try {
-        const response = await axios.post("https://marketplace.gohighlevel.com/oauth/token", {
+        const response = await axios.post("https://services.leadconnectorhq.com/oauth/token", {
             grant_type: "authorization_code",
             code: authCode,
             client_id: process.env.CLIENT_ID,
@@ -45,6 +45,21 @@ router.get("/callback", async (req, res) => {
         console.error("Error exchanging token:", error.response ? error.response.data : error.message);
         res.status(500).json({ error: "Token exchange failed!" });
     }
+
+    await axios.post("https://services.leadconnectorhq.com/payments/custom-provider/provider",
+        {
+            provider: "Billplz",
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            expires_in: 3600
+        },
+        {
+            headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Content-Type": "application/json"
+            }
+        }
+    );
 });
 
 // API untuk refresh token
@@ -54,7 +69,7 @@ router.get("/refresh", async (req, res) => {
     }
 
     try {
-        const response = await axios.post("https://marketplace.gohighlevel.com/oauth/token", {
+        const response = await axios.post("https://services.leadconnectorhq.com/oauth/token", {
             grant_type: "refresh_token",
             refresh_token: refreshToken,
             client_id: process.env.CLIENT_ID,
@@ -90,7 +105,7 @@ router.post("/register-payment", async (req, res) => {
     }
 
     try {
-        const response = await axios.post("https://api.gohighlevel.com/v1/payments/custom-provider",
+        const response = await axios.post("https://services.leadconnectorhq.com/payments/custom-provider/provider",
             {
                 provider: "Billplz",
                 access_token: accessToken,
