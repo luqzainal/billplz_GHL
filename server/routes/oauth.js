@@ -10,6 +10,9 @@ let refreshToken = null;
 
 // OAuth Callback (GHL akan redirect ke sini)
 router.get("/callback", async (req, res) => {
+    console.log("🔄 OAuth Callback triggered...");
+    console.log("🔗 Received Code:", req.query.code);
+
     const authCode = req.query.code;
 
     if (!authCode) {
@@ -27,7 +30,6 @@ router.get("/callback", async (req, res) => {
             headers: { "Content-Type": "application/json" }
         });
 
-        // Simpan access_token & refresh_token
         accessToken = response.data.access_token;
         refreshToken = response.data.refresh_token;
         locationId = response.data.location_id;
@@ -36,19 +38,15 @@ router.get("/callback", async (req, res) => {
         console.log("🔄 Refresh Token:", refreshToken);
         console.log("🏢 Location ID:", locationId);
 
-        // **Automatik daftar payment provider selepas OAuth**
-        await axios.post("http://localhost:3000/payments/register-payment");
-
         res.json({
-            message: "Authorization successful & Payment provider registered!",
+            message: "Authorization successful!",
             access_token: accessToken,
             refresh_token: refreshToken,
-            location_id: locationId,
-            expires_in: response.data.expires_in
+            location_id: locationId
         });
 
     } catch (error) {
-        console.error("❌ Error exchanging token:", error.response ? error.response.data : error.message);
+        console.error("❌ OAuth Error:", error.response ? error.response.data : error.message);
         res.status(500).json({ error: "OAuth process failed!" });
     }
 });
@@ -68,7 +66,7 @@ router.get("/callback", async (req, res) => {
             }
         }
     );
-});
+
 
 // API untuk refresh token
 router.get("/refresh", async (req, res) => {
