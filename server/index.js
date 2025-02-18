@@ -4,7 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 import billplzRoutes from './routes/billplz.js';
-const oauthRoutes = require("./routes/oauth");
+import oauthRoutes from "./routes/oauth.js";
 dotenv.config();
 
 const app = express();
