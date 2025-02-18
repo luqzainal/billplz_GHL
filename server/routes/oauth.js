@@ -30,23 +30,31 @@ router.get("/callback", async (req, res) => {
         // Simpan access_token & refresh_token
         accessToken = response.data.access_token;
         refreshToken = response.data.refresh_token;
+        locationId = response.data.location_id;
 
-        console.log("Access Token:", accessToken);
-        console.log("Refresh Token:", refreshToken);
+        console.log("✅ Access Token:", accessToken);
+        console.log("🔄 Refresh Token:", refreshToken);
+        console.log("🏢 Location ID:", locationId);
+
+        // **Automatik daftar payment provider selepas OAuth**
+        await axios.post("http://localhost:3000/payments/register-payment");
 
         res.json({
-            message: "Authorization successful!",
+            message: "Authorization successful & Payment provider registered!",
             access_token: accessToken,
             refresh_token: refreshToken,
+            location_id: locationId,
             expires_in: response.data.expires_in
         });
 
     } catch (error) {
-        console.error("Error exchanging token:", error.response ? error.response.data : error.message);
-        res.status(500).json({ error: "Token exchange failed!" });
+        console.error("❌ Error exchanging token:", error.response ? error.response.data : error.message);
+        res.status(500).json({ error: "OAuth process failed!" });
     }
+});
 
-    await axios.post("https://services.leadconnectorhq.com/payments/custom-provider/provider",
+
+    await axios.post("https://services.leadconnectorhq.com/payments/custom-provider",
         {
             provider: "Billplz",
             access_token: accessToken,
@@ -105,12 +113,14 @@ router.post("/register-payment", async (req, res) => {
     }
 
     try {
-        const response = await axios.post("https://services.leadconnectorhq.com/payments/custom-provider/provider",
+        const response = await axios.post("https://services.leadconnectorhq.com/payments/custom-provider",
             {
-                provider: "Billplz",
-                access_token: accessToken,
-                refresh_token: refreshToken,
-                expires_in: 3600
+                name: "Billplz",
+                description: "Billplz Payment Gateway for GHL",
+                imageUrl: "https://your-logo-url.com/billplz.png",
+                locationId: locationId, // Sub-account ID dari OAuth
+                queryUrl: "https://billplz.kuasaplus.com/api/billplz/query",
+                paymentsUrl: "https://billplz.kuasaplus.com/api/billplz/pay"
             },
             {
                 headers: {
@@ -120,7 +130,7 @@ router.post("/register-payment", async (req, res) => {
             }
         );
 
-        console.log("Payment Provider Registered:", response.data);
+        console.log("✅ Payment Provider Registered:", response.data);
 
         res.json({
             message: "Payment provider successfully registered in GHL!",
@@ -128,9 +138,10 @@ router.post("/register-payment", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error registering payment provider:", error.response ? error.response.data : error.message);
+        console.error("❌ Error registering payment provider:", error.response ? error.response.data : error.message);
         res.status(500).json({ error: "Failed to register payment provider!", details: error.response ? error.response.data : error.message });
     }
 });
+
 
 module.exports = router;
