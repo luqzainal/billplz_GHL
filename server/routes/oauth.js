@@ -52,7 +52,7 @@ router.get("/callback", async (req, res) => {
 });
 
 
-    await axios.post("https://services.leadconnectorhq.com/payments/custom-provider",
+    await axios.post("https://services.leadconnectorhq.com/payments/custom-provider/provider",
         {
             provider: "Billplz",
             access_token: accessToken,
@@ -111,7 +111,7 @@ router.post("/register-payment", async (req, res) => {
     }
 
     try {
-        const response = await axios.post("https://services.leadconnectorhq.com/payments/custom-provider",
+        const response = await axios.post("https://services.leadconnectorhq.com/payments/custom-provider/provider",
             {
                 name: "Billplz",
                 description: "Billplz Payment Gateway for GHL",
