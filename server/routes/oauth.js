@@ -1,5 +1,5 @@
-const express = require("express");
-const axios = require("axios");
+import express from 'express';
+import axios from 'axios';
 require("dotenv").config();
 
 const router = express.Router();
@@ -7,6 +7,7 @@ const router = express.Router();
 // Simpan token dalam memory (kau boleh tukar ke database kalau production)
 let accessToken = null;
 let refreshToken = null;
+let locationId = null;
 
 // OAuth Callback (GHL akan redirect ke sini)
 router.get("/callback", async (req, res) => {
@@ -50,23 +51,6 @@ router.get("/callback", async (req, res) => {
         res.status(500).json({ error: "OAuth process failed!" });
     }
 });
-
-
-    await axios.post("https://services.leadconnectorhq.com/payments/custom-provider/provider",
-        {
-            provider: "Billplz",
-            access_token: accessToken,
-            refresh_token: refreshToken,
-            expires_in: 3600
-        },
-        {
-            headers: {
-                "Authorization": `Bearer ${accessToken}`,
-                "Content-Type": "application/json"
-            }
-        }
-    );
-
 
 // API untuk refresh token
 router.get("/refresh", async (req, res) => {
@@ -116,7 +100,7 @@ router.post("/register-payment", async (req, res) => {
                 name: "Billplz",
                 description: "Billplz Payment Gateway for GHL",
                 imageUrl: "https://your-logo-url.com/billplz.png",
-                locationId: locationId, // Sub-account ID dari OAuth
+                locationId: locationId,
                 queryUrl: "https://billplz.kuasaplus.com/api/billplz/query",
                 paymentsUrl: "https://billplz.kuasaplus.com/api/billplz/pay"
             },
@@ -141,5 +125,4 @@ router.post("/register-payment", async (req, res) => {
     }
 });
 
-
-module.exports = router;
+export default router;

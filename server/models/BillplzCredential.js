@@ -1,25 +1,36 @@
 import mongoose from 'mongoose';
 
-const BillplzCredentialSchema = new mongoose.Schema({
+const billplzCredentialSchema = new mongoose.Schema({
   apiKey: {
     type: String,
-    required: true,
+    required: true
   },
   xSignatureKey: {
     type: String,
-    required: true,
+    required: true
   },
   collectionId: {
     type: String,
-    required: true,
+    required: true
   },
   mode: {
     type: String,
     enum: ['sandbox', 'production'],
-    required: true,
-  },
-}, { timestamps: true });
+    default: 'sandbox'
+  }
+}, {
+  timestamps: true
+});
 
-// Eksport model menggunakan ES Module
-const BillplzCredential = mongoose.model('BillplzCredential', BillplzCredentialSchema);
+// Pastikan hanya ada satu set kredential
+billplzCredentialSchema.pre('save', async function(next) {
+  if (this.isNew) {
+    // Delete semua kredential yang lain sebelum simpan yang baru
+    await this.constructor.deleteMany({});
+  }
+  next();
+});
+
+const BillplzCredential = mongoose.model('BillplzCredential', billplzCredentialSchema);
+
 export default BillplzCredential;
