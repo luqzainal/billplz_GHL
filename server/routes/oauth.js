@@ -1,6 +1,8 @@
 import express from 'express';
 import axios from 'axios';
-require("dotenv").config();
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const router = express.Router();
 
