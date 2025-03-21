@@ -1,5 +1,5 @@
 {
-  "name": "billplz-ghl-client",
+  "name": "billplz-payment-client",
   "version": "0.1.0",
   "private": true,
   "dependencies": {

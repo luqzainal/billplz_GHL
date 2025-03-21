@@ -232,7 +232,7 @@ const BillplzConfig = ({ locationId }) => {
             </div>
             <div className="ml-3">
               <p className="text-sm text-yellow-700">
-                Location ID is required to save Billplz credentials. Please make sure you are logged into GHL and have selected the correct location.
+                Location ID is required to save Billplz credentials. Please make sure you are logged in and have selected the correct location.
               </p>
             </div>
           </div>

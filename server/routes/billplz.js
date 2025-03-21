@@ -210,7 +210,7 @@ router.post('/pay/:locationId', async (req, res) => {
       email: email,
       name: name,
       amount: amount * 100, // Convert to cents
-      description: description || 'Payment via GHL',
+      description: description || 'Payment',
       callback_url: `${process.env.BASE_URL}/api/billplz/redirect/${locationId}`,
       redirect_url: `${process.env.BASE_URL}/api/billplz/redirect/${locationId}`,
       phone: phone

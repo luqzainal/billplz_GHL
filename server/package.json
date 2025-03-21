@@ -1,7 +1,7 @@
 {
-  "name": "billplz-ghl-server",
+  "name": "billplz-payment-server",
   "version": "1.0.0",
-  "description": "Backend for Billplz-GHL integration",
+  "description": "Backend for Billplz Payment Integration",
   "main": "index.js",
   "type": "module",
   "scripts": {
