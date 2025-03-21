@@ -4,8 +4,9 @@ import axios from 'axios';
 // Setup axios baseURL
 axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-const BillplzConfig = () => {
+const BillplzConfig = ({ locationId }) => {
   const [sandboxCredentials, setSandboxCredentials] = useState({
+    locationId: locationId,
     apiKey: '',
     xSignatureKey: '',
     collectionId: '',
@@ -13,6 +14,7 @@ const BillplzConfig = () => {
   });
 
   const [productionCredentials, setProductionCredentials] = useState({
+    locationId: locationId,
     apiKey: '',
     xSignatureKey: '',
     collectionId: '',
@@ -29,14 +31,16 @@ const BillplzConfig = () => {
   const [sandboxConnected, setSandboxConnected] = useState(false);
   const [productionConnected, setProductionConnected] = useState(false);
 
-  // Dapatkan kredential yang sedia ada bila komponen dimuat
+  // Get existing credentials when component loads
   useEffect(() => {
-    fetchCredentials();
-  }, []);
+    if (locationId) {
+      fetchCredentials();
+    }
+  }, [locationId]);
 
   const fetchCredentials = async () => {
     try {
-      const response = await axios.get('/api/billplz/credentials');
+      const response = await axios.get(`/api/billplz/credentials/${locationId}`);
       if (response.data.success && response.data.credentials) {
         const credentials = response.data.credentials;
         if (credentials.mode === 'sandbox') {
@@ -46,11 +50,11 @@ const BillplzConfig = () => {
           setProductionCredentials(credentials);
           setProductionConnected(true);
         }
-        setSuccessMessage(`Billplz telah dikonfigurasi dengan jayanya dalam mode ${credentials.mode}!`);
+        setSuccessMessage(`Billplz has been successfully configured in ${credentials.mode} mode!`);
       }
     } catch (error) {
       console.error('Error fetching credentials:', error);
-      setError('Gagal mendapatkan kredential dari server');
+      setError('Failed to get credentials from server');
     }
   };
 
@@ -72,14 +76,19 @@ const BillplzConfig = () => {
   };
 
   const handleConnect = async (mode) => {
-    // Set loading state hanya untuk mode yang dipilih
+    if (!locationId) {
+      setError('Location ID is required to save credentials');
+      return;
+    }
+
+    // Set loading state only for selected mode
     setLoadingStates(prev => ({ ...prev, [mode]: true }));
     setError(null);
     setSuccessMessage('');
     const credentials = mode === 'sandbox' ? sandboxCredentials : productionCredentials;
 
     try {
-      console.log(`Menghantar kredential ${mode} ke server:`, {
+      console.log(`Sending ${mode} credentials to server:`, {
         ...credentials,
         apiKey: '****' // Mask API key in logs
       });
@@ -87,12 +96,12 @@ const BillplzConfig = () => {
       const saveResponse = await axios.post('/api/billplz/credentials', credentials);
       
       if (!saveResponse.data.success) {
-        throw new Error(saveResponse.data.message || 'Gagal menyimpan kredential');
+        throw new Error(saveResponse.data.message || 'Failed to save credentials');
       }
 
-      console.log('Kredential berjaya disimpan, menguji sambungan...');
+      console.log('Credentials saved successfully, testing connection...');
       
-      const testResponse = await axios.get('/api/billplz/test-connection');
+      const testResponse = await axios.get(`/api/billplz/test-connection/${locationId}`);
       
       if (testResponse.data.success) {
         if (mode === 'sandbox') {
@@ -102,17 +111,17 @@ const BillplzConfig = () => {
           setProductionConnected(true);
           setSandboxConnected(false);
         }
-        setSuccessMessage(`Tahniah! Billplz telah berjaya dikonfigurasi dalam mode ${mode}. Anda boleh mula guna sistem pembayaran sekarang.`);
-        console.log('Sambungan berjaya diuji');
+        setSuccessMessage(`Congratulations! Billplz has been successfully configured in ${mode} mode. You can now start using the payment system.`);
+        console.log('Connection test successful');
       } else {
-        throw new Error(testResponse.data.message || 'Ujian sambungan gagal');
+        throw new Error(testResponse.data.message || 'Connection test failed');
       }
     } catch (error) {
       console.error('Error connecting to Billplz:', error);
       setError(
         error.response?.data?.message || 
         error.message || 
-        'Gagal menyambung ke Billplz. Sila periksa kredential anda.'
+        'Failed to connect to Billplz. Please check your credentials.'
       );
       if (mode === 'sandbox') {
         setSandboxConnected(false);
@@ -121,7 +130,7 @@ const BillplzConfig = () => {
       }
       setSuccessMessage('');
     } finally {
-      // Reset loading state hanya untuk mode yang dipilih
+      // Reset loading state only for selected mode
       setLoadingStates(prev => ({ ...prev, [mode]: false }));
     }
   };
@@ -129,7 +138,7 @@ const BillplzConfig = () => {
   const renderForm = (mode) => {
     const credentials = mode === 'sandbox' ? sandboxCredentials : productionCredentials;
     const isConnected = mode === 'sandbox' ? sandboxConnected : productionConnected;
-    const isLoading = loadingStates[mode]; // Guna loading state untuk mode yang spesifik
+    const isLoading = loadingStates[mode];
     const handleChange = (e) => handleInputChange(e, mode);
 
     return (
@@ -145,7 +154,7 @@ const BillplzConfig = () => {
             onChange={handleChange}
             className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
             required
-            placeholder={`Masukkan API Key ${mode} dari Billplz`}
+            placeholder={`Enter ${mode} API Key from Billplz`}
             disabled={isLoading}
           />
         </div>
@@ -161,7 +170,7 @@ const BillplzConfig = () => {
             onChange={handleChange}
             className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
             required
-            placeholder={`Masukkan X-Signature Key ${mode} dari Billplz`}
+            placeholder={`Enter ${mode} X-Signature Key from Billplz`}
             disabled={isLoading}
           />
         </div>
@@ -177,19 +186,21 @@ const BillplzConfig = () => {
             onChange={handleChange}
             className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
             required
-            placeholder={`Masukkan Collection ID ${mode} dari Billplz`}
+            placeholder={`Enter ${mode} Collection ID from Billplz`}
             disabled={isLoading}
           />
         </div>
 
         <button
           type="submit"
-          disabled={isLoading}
-          className={`w-full p-3 rounded text-white font-medium transition-colors ${
-            isConnected 
-              ? 'bg-green-500 hover:bg-green-600' 
+          className={`w-full p-2 rounded ${
+            isConnected
+              ? 'bg-green-500 hover:bg-green-600'
               : 'bg-blue-500 hover:bg-blue-600'
-          } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          } text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+            isLoading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+          disabled={isLoading}
         >
           {isLoading ? (
             <span className="flex items-center justify-center">
@@ -197,31 +208,41 @@ const BillplzConfig = () => {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Sedang Menyambung...
+              Connecting...
             </span>
           ) : isConnected ? (
-            'Tersambung ✓'
+            'Connected'
           ) : (
-            'Sambung'
+            'Connect'
           )}
         </button>
-
-        {isConnected && (
-          <div className="mt-4 p-4 bg-gray-100 rounded">
-            <h3 className="font-medium mb-2">Status Sambungan {mode.charAt(0).toUpperCase() + mode.slice(1)}</h3>
-            <p className="text-sm text-gray-600">
-              Collection ID: <span className="font-medium">{credentials.collectionId}</span>
-            </p>
-          </div>
-        )}
       </form>
     );
   };
 
+  if (!locationId) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Location ID is required to save Billplz credentials. Please make sure you are logged into GHL and have selected the correct location.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h2 className="text-2xl font-bold mb-6">Konfigurasi Billplz</h2>
-      
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {successMessage && (
         <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
           {successMessage}
@@ -238,7 +259,7 @@ const BillplzConfig = () => {
         {/* Sandbox Form */}
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <h3 className="text-lg font-semibold mb-4 text-gray-800">
-            Mode Sandbox (Testing)
+            Sandbox Mode (Testing)
           </h3>
           {renderForm('sandbox')}
         </div>
@@ -246,7 +267,7 @@ const BillplzConfig = () => {
         {/* Production Form */}
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <h3 className="text-lg font-semibold mb-4 text-gray-800">
-            Mode Production (Live)
+            Production Mode (Live)
           </h3>
           {renderForm('production')}
         </div>

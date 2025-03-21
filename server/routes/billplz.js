@@ -7,48 +7,49 @@ import BillplzCredential from '../models/BillplzCredential.js';
 
 /**
  * POST /api/billplz/credentials
- * Simpan atau kemaskini konfigurasi Billplz.
+ * Save or update Billplz configuration.
  */
 router.post('/credentials', async (req, res) => {
   try {
-    console.log('Menerima permintaan untuk simpan kredential:', {
+    console.log('Received request to save credentials:', {
       ...req.body,
       apiKey: req.body.apiKey ? '****' : undefined // Mask API key for security
     });
 
-    const { apiKey, xSignatureKey, collectionId, mode } = req.body;
+    const { apiKey, xSignatureKey, collectionId, mode, locationId } = req.body;
 
-    if (!apiKey || !xSignatureKey || !collectionId) {
+    if (!apiKey || !xSignatureKey || !collectionId || !locationId) {
       console.log('Validation error: Missing required fields');
       return res.status(400).json({
         success: false,
-        message: 'API Key, X-Signature Key, dan Collection ID diperlukan'
+        message: 'API Key, X-Signature Key, Collection ID, and Location ID are required'
       });
     }
 
-    // Jika sudah ada rekod, kemaskini; jika tidak, buat baru
-    let credentials = await BillplzCredential.findOne();
+    // If record exists for this locationId, update it; if not, create new
+    let credentials = await BillplzCredential.findOne({ locationId });
     if (credentials) {
-      console.log('Mengemaskini kredential sedia ada');
+      console.log('Updating existing credentials for locationId:', locationId);
       credentials.apiKey = apiKey;
       credentials.xSignatureKey = xSignatureKey;
       credentials.collectionId = collectionId;
       credentials.mode = mode;
       await credentials.save();
     } else {
-      console.log('Membuat kredential baru');
-      credentials = new BillplzCredential({ apiKey, xSignatureKey, collectionId, mode });
+      console.log('Creating new credentials for locationId:', locationId);
+      credentials = new BillplzCredential({ locationId, apiKey, xSignatureKey, collectionId, mode });
       await credentials.save();
     }
 
-    // Test connection sebelum return success
+    // Test connection before returning success
     const baseUrl = mode === 'production'
       ? 'https://www.billplz.com/api/v3'
       : 'https://www.billplz-sandbox.com/api/v3';
 
-    console.log('Menguji sambungan ke Billplz:', {
+    console.log('Testing connection to Billplz:', {
       url: `${baseUrl}/collections/${collectionId}`,
-      mode: mode
+      mode: mode,
+      locationId: locationId
     });
 
     try {
@@ -58,12 +59,13 @@ router.post('/credentials', async (req, res) => {
         }
       });
 
-      console.log('Sambungan berjaya:', testResponse.data);
+      console.log('Connection successful:', testResponse.data);
 
       res.json({ 
         success: true, 
-        message: 'Kredential berjaya disimpan dan sambungan diuji',
+        message: 'Credentials saved and connection tested successfully',
         credentials: {
+          locationId: credentials.locationId,
           apiKey: credentials.apiKey,
           xSignatureKey: credentials.xSignatureKey,
           collectionId: credentials.collectionId,
@@ -71,7 +73,7 @@ router.post('/credentials', async (req, res) => {
         }
       });
     } catch (testError) {
-      console.error('Error menguji sambungan:', {
+      console.error('Error testing connection:', {
         status: testError.response?.status,
         data: testError.response?.data,
         message: testError.message
@@ -80,12 +82,12 @@ router.post('/credentials', async (req, res) => {
       // Delete credentials if test fails
       if (credentials) {
         await BillplzCredential.deleteOne({ _id: credentials._id });
-        console.log('Kredential dipadam kerana ujian sambungan gagal');
+        console.log('Credentials deleted due to failed connection test');
       }
 
       res.status(400).json({ 
         success: false, 
-        message: 'Gagal menyambung ke Billplz. Sila periksa kredential anda.',
+        message: 'Failed to connect to Billplz. Please check your credentials.',
         error: testError.response?.data || testError.message 
       });
     }
@@ -96,28 +98,30 @@ router.post('/credentials', async (req, res) => {
     });
     res.status(500).json({ 
       success: false, 
-      message: 'Gagal menyimpan kredential',
+      message: 'Failed to save credentials',
       error: error.message 
     });
   }
 });
 
 /**
- * GET /api/billplz/credentials
- * Dapatkan konfigurasi Billplz yang tersimpan.
+ * GET /api/billplz/credentials/:locationId
+ * Get stored Billplz configuration for specific locationId.
  */
-router.get('/credentials', async (req, res) => {
+router.get('/credentials/:locationId', async (req, res) => {
   try {
-    const credentials = await BillplzCredential.findOne();
+    const { locationId } = req.params;
+    const credentials = await BillplzCredential.findOne({ locationId });
     if (!credentials) {
       return res.json({ 
         success: false, 
-        message: 'Tiada kredential yang disimpan' 
+        message: 'No credentials stored for this location' 
       });
     }
     res.json({ 
       success: true, 
       credentials: {
+        locationId: credentials.locationId,
         apiKey: credentials.apiKey,
         xSignatureKey: credentials.xSignatureKey,
         collectionId: credentials.collectionId,
@@ -128,23 +132,24 @@ router.get('/credentials', async (req, res) => {
     console.error('Error fetching credentials:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Gagal mendapatkan kredential',
+      message: 'Failed to get credentials',
       error: error.message 
     });
   }
 });
 
 /**
- * GET /api/billplz/test-connection
- * Uji sambungan ke API Billplz menggunakan konfigurasi yang disimpan.
+ * GET /api/billplz/test-connection/:locationId
+ * Test connection to Billplz API using stored configuration for specific locationId.
  */
-router.get('/test-connection', async (req, res) => {
+router.get('/test-connection/:locationId', async (req, res) => {
   try {
-    const credentials = await BillplzCredential.findOne();
+    const { locationId } = req.params;
+    const credentials = await BillplzCredential.findOne({ locationId });
     if (!credentials) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Tiada kredential yang disimpan' 
+        message: 'No credentials stored for this location' 
       });
     }
 
@@ -160,30 +165,31 @@ router.get('/test-connection', async (req, res) => {
 
     res.json({ 
       success: true, 
-      message: 'Sambungan berjaya',
+      message: 'Connection successful',
       data: response.data 
     });
   } catch (error) {
     console.error('Error testing connection:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Gagal menguji sambungan',
+      message: 'Failed to test connection',
       error: error.response?.data || error.message 
     });
   }
 });
 
 /**
- * POST /api/billplz/pay
- * Endpoint untuk membuat pembayaran
+ * POST /api/billplz/pay/:locationId
+ * Endpoint to create payment for specific locationId
  */
-router.post('/pay', async (req, res) => {
+router.post('/pay/:locationId', async (req, res) => {
   try {
-    const credentials = await BillplzCredential.findOne();
+    const { locationId } = req.params;
+    const credentials = await BillplzCredential.findOne({ locationId });
     if (!credentials) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Tiada kredential yang disimpan' 
+        message: 'No credentials stored for this location' 
       });
     }
 
@@ -191,7 +197,7 @@ router.post('/pay', async (req, res) => {
     if (!amount || !name || !email) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Amount, name dan email diperlukan' 
+        message: 'Amount, name and email are required' 
       });
     }
 
@@ -205,8 +211,8 @@ router.post('/pay', async (req, res) => {
       name: name,
       amount: amount * 100, // Convert to cents
       description: description || 'Payment via GHL',
-      callback_url: `${process.env.BASE_URL}/api/billplz/redirect`,
-      redirect_url: `${process.env.BASE_URL}/api/billplz/redirect`,
+      callback_url: `${process.env.BASE_URL}/api/billplz/redirect/${locationId}`,
+      redirect_url: `${process.env.BASE_URL}/api/billplz/redirect/${locationId}`,
       phone: phone
     }, {
       headers: {
@@ -224,23 +230,24 @@ router.post('/pay', async (req, res) => {
     console.error('Error creating bill:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Gagal membuat bil',
+      message: 'Failed to create bill',
       error: error.response?.data || error.message 
     });
   }
 });
 
 /**
- * POST /api/billplz/query
- * Endpoint untuk query status pembayaran
+ * POST /api/billplz/query/:locationId
+ * Endpoint to query payment status for specific locationId
  */
-router.post('/query', async (req, res) => {
+router.post('/query/:locationId', async (req, res) => {
   try {
-    const credentials = await BillplzCredential.findOne();
+    const { locationId } = req.params;
+    const credentials = await BillplzCredential.findOne({ locationId });
     if (!credentials) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Tiada kredential yang disimpan' 
+        message: 'No credentials stored for this location' 
       });
     }
 
@@ -248,7 +255,7 @@ router.post('/query', async (req, res) => {
     if (!billId) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Bill ID diperlukan' 
+        message: 'Bill ID is required' 
       });
     }
 
@@ -273,25 +280,30 @@ router.post('/query', async (req, res) => {
     console.error('Error querying bill:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Gagal mendapatkan status bil',
+      message: 'Failed to get bill status',
       error: error.response?.data || error.message 
     });
   }
 });
 
 /**
- * GET /api/billplz/redirect
- * Endpoint untuk menerima callback daripada Billplz selepas pembayaran.
+ * GET /api/billplz/redirect/:locationId
+ * Endpoint to receive callback from Billplz after payment.
  */
-router.get('/redirect', (req, res) => {
-  // Verify X-Signature
-  const credentials = BillplzCredential.findOne();
-  if (credentials) {
-    // TODO: Implement X-Signature verification
-    console.log('Billplz callback diterima:', req.query);
+router.get('/redirect/:locationId', async (req, res) => {
+  try {
+    const { locationId } = req.params;
+    const credentials = await BillplzCredential.findOne({ locationId });
+    if (credentials) {
+      // TODO: Implement X-Signature verification
+      console.log('Billplz callback received for locationId:', locationId, req.query);
+    }
+    
+    res.send("Payment has been processed. You may close this window.");
+  } catch (error) {
+    console.error('Error handling redirect:', error);
+    res.status(500).send("Error processing payment.");
   }
-  
-  res.send("Pembayaran berjaya diproses. Sila tutup tetingkap ini.");
 });
 
 const billplz = () => {

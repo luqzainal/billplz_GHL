@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const billplzCredentialSchema = new mongoose.Schema({
+  locationId: {
+    type: String,
+    required: true,
+    unique: true
+  },
   apiKey: {
     type: String,
     required: true
@@ -22,11 +27,11 @@ const billplzCredentialSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Pastikan hanya ada satu set kredential
+// Pastikan hanya ada satu set kredential untuk setiap locationId
 billplzCredentialSchema.pre('save', async function(next) {
   if (this.isNew) {
-    // Delete semua kredential yang lain sebelum simpan yang baru
-    await this.constructor.deleteMany({});
+    // Delete kredential lama untuk locationId yang sama sahaja
+    await this.constructor.deleteMany({ locationId: this.locationId });
   }
   next();
 });
