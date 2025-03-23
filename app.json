@@ -11,18 +11,31 @@
       },
       "source_dir": "server",
       "run_command": "npm start",
+      "build_command": "npm install",
+      "http_port": 5000,
+      "instance_count": 1,
+      "instance_size_slug": "basic-xxs",
+      "routes": [
+        {
+          "path": "/api",
+          "preserve_path_prefix": true
+        }
+      ],
       "envs": [
         {
           "key": "MONGODB_URI",
-          "value": "your-mongodb-uri"
+          "value": "your-mongodb-uri",
+          "type": "SECRET"
         },
         {
           "key": "CLIENT_ID",
-          "value": "your-client-id"
+          "value": "your-client-id",
+          "type": "SECRET"
         },
         {
           "key": "CLIENT_SECRET",
-          "value": "your-client-secret"
+          "value": "your-client-secret",
+          "type": "SECRET"
         },
         {
           "key": "REDIRECT_URI",
@@ -43,12 +56,24 @@
         "repo": "your-username/billplz-payment"
       },
       "source_dir": "client",
-      "build_command": "npm run build",
+      "build_command": "npm install && npm run build",
       "run_command": "npm start",
+      "http_port": 3000,
+      "instance_count": 1,
+      "instance_size_slug": "basic-xxs",
+      "routes": [
+        {
+          "path": "/"
+        }
+      ],
       "envs": [
         {
           "key": "REACT_APP_API_URL",
           "value": "${APP_URL}"
+        },
+        {
+          "key": "NODE_ENV",
+          "value": "production"
         }
       ]
     }
