@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:16-alpine
 
 WORKDIR /app
 
@@ -7,17 +7,20 @@ COPY package*.json ./
 COPY client/package*.json ./client/
 COPY server/package*.json ./server/
 
-# Install dependencies
+# Install dependencies for root
 RUN npm install
 
-# Copy remaining code
+# Copy the entire project
 COPY . .
 
-# Build client
-RUN cd client && npm run build
+# Install dependencies and build client
+RUN cd client && npm install && npm run build
 
-# Expose port
+# Install dependencies for server
+RUN cd server && npm install
+
+# Expose the server port
 EXPOSE 5000
 
-# Start the application
+# Start the server
 CMD ["npm", "start"] 

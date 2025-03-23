@@ -8,7 +8,7 @@ import oauthRoutes from "./routes/oauth.js";
 
 dotenv.config();
 
-const app = express();
+const app = express.Router();
 
 // Middleware
 app.use(cors());
@@ -18,13 +18,13 @@ app.use(express.json());
 app.use('/api/billplz', billplzRoutes);
 app.use("/oauth", oauthRoutes);
 
-// Sambungkan ke MongoDB
-mongoose.connect(process.env.MONGO_URI, {
+// Connect to MongoDB - this will run when this module is imported
+mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
 .then(() => console.log('MongoDB Connected'))
 .catch(err => console.error('MongoDB connection error:', err));
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Export the router instead of starting the server
+export default app;

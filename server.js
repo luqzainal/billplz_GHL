@@ -1,14 +1,12 @@
-// Simple server to serve both API and static files
+// Combined server for both client and API
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 import cors from 'cors';
-import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 
-// Import routes
-import billplzRoutes from './server/routes/billplz.js';
-import oauthRoutes from './server/routes/oauth.js';
+// Import server app (relative to root)
+import serverApp from './server/index.js';
 
 // Initialize
 dotenv.config();
@@ -20,28 +18,22 @@ const __dirname = path.dirname(__filename);
 app.use(cors());
 app.use(express.json());
 
-// Routes
-app.use('/api/billplz', billplzRoutes);
-app.use('/oauth', oauthRoutes);
+// Use server routes (API)
+app.use('/', serverApp);
 
-// Serve static files from the React app if in production
+// Serve static files from React build in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'client/build')));
   
-  // Handle any requests that don't match the above
+  // Handle any requests that don't match API routes
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
   });
 }
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('MongoDB Connected'))
-.catch(err => console.error('MongoDB connection error:', err));
-
-// Start the server
+// Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`)); 
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+}); 
