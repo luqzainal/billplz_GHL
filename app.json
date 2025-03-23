@@ -1,0 +1,56 @@
+{
+  "name": "billplz-payment",
+  "services": [
+    {
+      "name": "server",
+      "environment_slug": "node-js",
+      "github": {
+        "branch": "main",
+        "deploy_on_push": true,
+        "repo": "your-username/billplz-payment"
+      },
+      "source_dir": "server",
+      "run_command": "npm start",
+      "envs": [
+        {
+          "key": "MONGODB_URI",
+          "value": "your-mongodb-uri"
+        },
+        {
+          "key": "CLIENT_ID",
+          "value": "your-client-id"
+        },
+        {
+          "key": "CLIENT_SECRET",
+          "value": "your-client-secret"
+        },
+        {
+          "key": "REDIRECT_URI",
+          "value": "${APP_URL}/oauth/callback"
+        },
+        {
+          "key": "BASE_URL",
+          "value": "${APP_URL}"
+        }
+      ]
+    },
+    {
+      "name": "client",
+      "environment_slug": "node-js",
+      "github": {
+        "branch": "main",
+        "deploy_on_push": true,
+        "repo": "your-username/billplz-payment"
+      },
+      "source_dir": "client",
+      "build_command": "npm run build",
+      "run_command": "npm start",
+      "envs": [
+        {
+          "key": "REACT_APP_API_URL",
+          "value": "${APP_URL}"
+        }
+      ]
+    }
+  ]
+} 
