@@ -9,7 +9,7 @@
     "client": "cd client && npm start",
     "server": "cd server && npm run dev",
     "build": "npm install && npm install --prefix client && npm run build --prefix client",
-    "start": "NODE_ENV=production node server.js"
+    "start": "set NODE_ENV=production && node server.js"
   },
   "keywords": [
     "payment",
