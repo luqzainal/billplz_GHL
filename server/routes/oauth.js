@@ -9,10 +9,30 @@ router.get('/callback', async (req, res) => {
     const { code } = req.query;
 
     if (!code) {
-      return res.status(400).json({
-        success: false,
-        message: 'Authorization code not found'
-      });
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Billplz Installation Failed</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+          </head>
+          <body class="bg-gray-100">
+            <div class="min-h-screen flex items-center justify-center">
+              <div class="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+                <div class="text-center">
+                  <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                    <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <h2 class="text-2xl font-bold text-gray-900 mb-2">Installation Failed</h2>
+                  <p class="text-gray-600">Authorization code not found. Please try again.</p>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
     }
 
     // Exchange code for access token
@@ -45,20 +65,67 @@ router.get('/callback', async (req, res) => {
 
     await credentials.save();
 
-    res.json({
-      success: true,
-      message: 'OAuth successful',
-      data: {
-        access_token: tokenResponse.data.access_token,
-        user: userResponse.data
-      }
-    });
+    // Return success page
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Billplz Installation Successful</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-gray-100">
+          <div class="min-h-screen flex items-center justify-center">
+            <div class="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+              <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                  <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Installation Successful!</h2>
+                <p class="text-gray-600 mb-6">Billplz plugin has been installed successfully.</p>
+                <div class="mt-6">
+                  <a href="/" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Go to Dashboard
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
   } catch (error) {
     console.error('Error in OAuth callback:', error);
-    res.status(500).json({
-      success: false,
-      message: error.response?.data?.error?.message || 'Failed in OAuth process'
-    });
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Billplz Installation Failed</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-gray-100">
+          <div class="min-h-screen flex items-center justify-center">
+            <div class="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+              <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                  <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Installation Failed</h2>
+                <p class="text-gray-600">${error.response?.data?.error?.message || 'Failed in OAuth process'}</p>
+                <div class="mt-6">
+                  <a href="/" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Try Again
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
   }
 });
 
