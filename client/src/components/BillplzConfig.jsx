@@ -4,9 +4,8 @@ import axios from 'axios';
 // Setup axios baseURL
 axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-const BillplzConfig = ({ locationId }) => {
+const BillplzConfig = () => {
   const [sandboxCredentials, setSandboxCredentials] = useState({
-    locationId: locationId,
     apiKey: '',
     xSignatureKey: '',
     collectionId: '',
@@ -14,7 +13,6 @@ const BillplzConfig = ({ locationId }) => {
   });
 
   const [productionCredentials, setProductionCredentials] = useState({
-    locationId: locationId,
     apiKey: '',
     xSignatureKey: '',
     collectionId: '',
@@ -27,20 +25,17 @@ const BillplzConfig = ({ locationId }) => {
     production: false
   });
   const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState('');
+  const [success, setSuccess] = useState(null);
   const [sandboxConnected, setSandboxConnected] = useState(false);
   const [productionConnected, setProductionConnected] = useState(false);
 
-  // Get existing credentials when component loads
   useEffect(() => {
-    if (locationId) {
-      fetchCredentials();
-    }
-  }, [locationId]);
+    fetchCredentials();
+  }, []);
 
   const fetchCredentials = async () => {
     try {
-      const response = await axios.get(`/api/billplz/credentials/${locationId}`);
+      const response = await axios.get('/api/billplz/credentials');
       if (response.data.success && response.data.credentials) {
         const credentials = response.data.credentials;
         if (credentials.mode === 'sandbox') {
@@ -50,85 +45,64 @@ const BillplzConfig = ({ locationId }) => {
           setProductionCredentials(credentials);
           setProductionConnected(true);
         }
-        setSuccessMessage(`Billplz has been successfully configured in ${credentials.mode} mode!`);
+        setActiveMode(credentials.mode);
       }
     } catch (error) {
       console.error('Error fetching credentials:', error);
-      setError('Failed to get credentials from server');
+      setError('Failed to fetch configuration information');
     }
   };
 
-  const handleInputChange = (e, mode) => {
-    const { name, value } = e.target;
+  const handleInputChange = (mode, field, value) => {
     if (mode === 'sandbox') {
-      setSandboxCredentials(prev => ({
-        ...prev,
-        [name]: value
-      }));
+      setSandboxCredentials(prev => ({ ...prev, [field]: value }));
     } else {
-      setProductionCredentials(prev => ({
-        ...prev,
-        [name]: value
-      }));
+      setProductionCredentials(prev => ({ ...prev, [field]: value }));
     }
     setError(null);
-    setSuccessMessage('');
   };
 
   const handleConnect = async (mode) => {
-    if (!locationId) {
-      setError('Location ID is required to save credentials');
+    const credentials = mode === 'sandbox' ? sandboxCredentials : productionCredentials;
+    
+    if (!credentials.apiKey || !credentials.xSignatureKey || !credentials.collectionId) {
+      setError('All fields are required');
       return;
     }
 
     // Set loading state only for selected mode
     setLoadingStates(prev => ({ ...prev, [mode]: true }));
     setError(null);
-    setSuccessMessage('');
-    const credentials = mode === 'sandbox' ? sandboxCredentials : productionCredentials;
+    setSuccess(null);
 
     try {
-      console.log(`Sending ${mode} credentials to server:`, {
-        ...credentials,
-        apiKey: '****' // Mask API key in logs
-      });
-
-      const saveResponse = await axios.post('/api/billplz/credentials', credentials);
+      const response = await axios.post('/api/billplz/credentials', credentials);
       
-      if (!saveResponse.data.success) {
-        throw new Error(saveResponse.data.message || 'Failed to save credentials');
-      }
-
-      console.log('Credentials saved successfully, testing connection...');
-      
-      const testResponse = await axios.get(`/api/billplz/test-connection/${locationId}`);
-      
-      if (testResponse.data.success) {
-        if (mode === 'sandbox') {
-          setSandboxConnected(true);
-          setProductionConnected(false);
+      if (response.data.success) {
+        setSuccess(`Configuration for ${mode === 'sandbox' ? 'Sandbox' : 'Production'} saved successfully`);
+        setActiveMode(mode);
+        
+        // Test connection after saving
+        const testResponse = await axios.get('/api/billplz/test-connection');
+        
+        if (testResponse.data.success) {
+          if (mode === 'sandbox') {
+            setSandboxConnected(true);
+            setProductionConnected(false);
+          } else {
+            setProductionConnected(true);
+            setSandboxConnected(false);
+          }
+          setSuccess(prev => `${prev} and connection successful`);
         } else {
-          setProductionConnected(true);
-          setSandboxConnected(false);
+          setError('Configuration saved but connection failed');
         }
-        setSuccessMessage(`Congratulations! Billplz has been successfully configured in ${mode} mode. You can now start using the payment system.`);
-        console.log('Connection test successful');
       } else {
-        throw new Error(testResponse.data.message || 'Connection test failed');
+        setError(response.data.message || 'Failed to save configuration');
       }
     } catch (error) {
-      console.error('Error connecting to Billplz:', error);
-      setError(
-        error.response?.data?.message || 
-        error.message || 
-        'Failed to connect to Billplz. Please check your credentials.'
-      );
-      if (mode === 'sandbox') {
-        setSandboxConnected(false);
-      } else {
-        setProductionConnected(false);
-      }
-      setSuccessMessage('');
+      console.error('Error saving credentials:', error);
+      setError(error.response?.data?.message || 'Failed to save configuration');
     } finally {
       // Reset loading state only for selected mode
       setLoadingStates(prev => ({ ...prev, [mode]: false }));
@@ -137,139 +111,132 @@ const BillplzConfig = ({ locationId }) => {
 
   const renderForm = (mode) => {
     const credentials = mode === 'sandbox' ? sandboxCredentials : productionCredentials;
-    const isConnected = mode === 'sandbox' ? sandboxConnected : productionConnected;
+    const isActive = activeMode === mode;
     const isLoading = loadingStates[mode];
-    const handleChange = (e) => handleInputChange(e, mode);
+    const isConnected = mode === 'sandbox' ? sandboxConnected : productionConnected;
 
     return (
-      <form onSubmit={(e) => { e.preventDefault(); handleConnect(mode); }} className="space-y-4">
+      <form className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-sm font-medium text-gray-700">
             API Key
           </label>
           <input
             type="text"
-            name="apiKey"
             value={credentials.apiKey}
-            onChange={handleChange}
-            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-            required
-            placeholder={`Enter ${mode} API Key from Billplz`}
+            onChange={(e) => handleInputChange(mode, 'apiKey', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder={`Enter ${mode === 'sandbox' ? 'Sandbox' : 'Production'} API Key`}
             disabled={isLoading}
           />
         </div>
-
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-sm font-medium text-gray-700">
             X-Signature Key
           </label>
           <input
             type="text"
-            name="xSignatureKey"
             value={credentials.xSignatureKey}
-            onChange={handleChange}
-            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-            required
-            placeholder={`Enter ${mode} X-Signature Key from Billplz`}
+            onChange={(e) => handleInputChange(mode, 'xSignatureKey', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder={`Enter ${mode === 'sandbox' ? 'Sandbox' : 'Production'} X-Signature Key`}
             disabled={isLoading}
           />
         </div>
-
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-sm font-medium text-gray-700">
             Collection ID
           </label>
           <input
             type="text"
-            name="collectionId"
             value={credentials.collectionId}
-            onChange={handleChange}
-            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-            required
-            placeholder={`Enter ${mode} Collection ID from Billplz`}
+            onChange={(e) => handleInputChange(mode, 'collectionId', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder={`Enter ${mode === 'sandbox' ? 'Sandbox' : 'Production'} Collection ID`}
             disabled={isLoading}
           />
         </div>
-
-        <button
-          type="submit"
-          className={`w-full p-2 rounded ${
-            isConnected
-              ? 'bg-green-500 hover:bg-green-600'
-              : 'bg-blue-500 hover:bg-blue-600'
-          } text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-            isLoading ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <span className="flex items-center justify-center">
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Connecting...
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => handleConnect(mode)}
+            disabled={isLoading}
+            className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
+              isConnected
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-indigo-600 hover:bg-indigo-700'
+            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {isLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Connecting...
+              </>
+            ) : isConnected ? (
+              'Connection Successful'
+            ) : (
+              'Connect'
+            )}
+          </button>
+          {isActive && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              Active
             </span>
-          ) : isConnected ? (
-            'Connected'
-          ) : (
-            'Connect'
           )}
-        </button>
+        </div>
       </form>
     );
   };
 
-  if (!locationId) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                Location ID is required to save Billplz credentials. Please make sure you are logged in and have selected the correct location.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {successMessage && (
-        <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
-          {successMessage}
-        </div>
-      )}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-6">Billplz Configuration</h2>
+        
+        {error && (
+          <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
-        </div>
-      )}
+        {success && (
+          <div className="mb-4 bg-green-50 border-l-4 border-green-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-green-700">{success}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Sandbox Form */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <h3 className="text-lg font-semibold mb-4 text-gray-800">
-            Sandbox Mode (Testing)
-          </h3>
-          {renderForm('sandbox')}
-        </div>
-
-        {/* Production Form */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <h3 className="text-lg font-semibold mb-4 text-gray-800">
-            Production Mode (Live)
-          </h3>
-          {renderForm('production')}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div>
+            <h3 className="text-md font-medium text-gray-900 mb-4">Sandbox Configuration</h3>
+            {renderForm('sandbox')}
+          </div>
+          <div>
+            <h3 className="text-md font-medium text-gray-900 mb-4">Production Configuration</h3>
+            {renderForm('production')}
+          </div>
         </div>
       </div>
     </div>

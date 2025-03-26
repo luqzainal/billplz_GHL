@@ -1,314 +1,274 @@
 // server/routes/billplz.js
 import express from 'express';
 import axios from 'axios';
-const router = express.Router();
-
 import BillplzCredential from '../models/BillplzCredential.js';
+
+const router = express.Router();
 
 /**
  * POST /api/billplz/credentials
- * Save or update Billplz configuration.
+ * Save Billplz configuration.
  */
 router.post('/credentials', async (req, res) => {
   try {
-    console.log('Received request to save credentials:', {
-      ...req.body,
-      apiKey: req.body.apiKey ? '****' : undefined // Mask API key for security
-    });
+    const { apiKey, xSignatureKey, collectionId, mode } = req.body;
 
-    const { apiKey, xSignatureKey, collectionId, mode, locationId } = req.body;
-
-    if (!apiKey || !xSignatureKey || !collectionId || !locationId) {
-      console.log('Validation error: Missing required fields');
+    if (!apiKey || !xSignatureKey || !collectionId) {
       return res.status(400).json({
         success: false,
-        message: 'API Key, X-Signature Key, Collection ID, and Location ID are required'
+        message: 'All fields are required'
       });
     }
 
-    // If record exists for this locationId, update it; if not, create new
-    let credentials = await BillplzCredential.findOne({ locationId });
+    // If record exists for this mode, update it; if not, create new
+    let credentials = await BillplzCredential.findOne({ mode });
+
     if (credentials) {
-      console.log('Updating existing credentials for locationId:', locationId);
+      console.log('Updating existing credentials for mode:', mode);
       credentials.apiKey = apiKey;
       credentials.xSignatureKey = xSignatureKey;
       credentials.collectionId = collectionId;
-      credentials.mode = mode;
       await credentials.save();
     } else {
-      console.log('Creating new credentials for locationId:', locationId);
-      credentials = new BillplzCredential({ locationId, apiKey, xSignatureKey, collectionId, mode });
+      console.log('Creating new credentials for mode:', mode);
+      credentials = new BillplzCredential({
+        apiKey,
+        xSignatureKey,
+        collectionId,
+        mode
+      });
       await credentials.save();
     }
 
-    // Test connection before returning success
-    const baseUrl = mode === 'production'
-      ? 'https://www.billplz.com/api/v3'
-      : 'https://www.billplz-sandbox.com/api/v3';
-
-    console.log('Testing connection to Billplz:', {
-      url: `${baseUrl}/collections/${collectionId}`,
-      mode: mode,
-      locationId: locationId
-    });
-
-    try {
-      const testResponse = await axios.get(`${baseUrl}/collections/${collectionId}`, {
-        headers: {
-          'Authorization': `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`
-        }
-      });
-
-      console.log('Connection successful:', testResponse.data);
-
-      res.json({ 
-        success: true, 
-        message: 'Credentials saved and connection tested successfully',
-        credentials: {
-          locationId: credentials.locationId,
-          apiKey: credentials.apiKey,
-          xSignatureKey: credentials.xSignatureKey,
-          collectionId: credentials.collectionId,
-          mode: credentials.mode
-        }
-      });
-    } catch (testError) {
-      console.error('Error testing connection:', {
-        status: testError.response?.status,
-        data: testError.response?.data,
-        message: testError.message
-      });
-
-      // Delete credentials if test fails
-      if (credentials) {
-        await BillplzCredential.deleteOne({ _id: credentials._id });
-        console.log('Credentials deleted due to failed connection test');
+    res.json({
+      success: true,
+      message: 'Configuration saved successfully',
+      credentials: {
+        mode: credentials.mode,
+        apiKey: credentials.apiKey,
+        xSignatureKey: credentials.xSignatureKey,
+        collectionId: credentials.collectionId
       }
-
-      res.status(400).json({ 
-        success: false, 
-        message: 'Failed to connect to Billplz. Please check your credentials.',
-        error: testError.response?.data || testError.message 
-      });
-    }
-  } catch (error) {
-    console.error('Error saving credentials:', {
-      message: error.message,
-      stack: error.stack
     });
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to save credentials',
-      error: error.message 
+  } catch (error) {
+    console.error('Error saving credentials:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save configuration'
     });
   }
 });
 
 /**
- * GET /api/billplz/credentials/:locationId
- * Get stored Billplz configuration for specific locationId.
+ * GET /api/billplz/credentials
+ * Get stored Billplz configuration.
  */
-router.get('/credentials/:locationId', async (req, res) => {
+router.get('/credentials', async (req, res) => {
   try {
-    const { locationId } = req.params;
-    const credentials = await BillplzCredential.findOne({ locationId });
+    const credentials = await BillplzCredential.findOne();
+    
     if (!credentials) {
-      return res.json({ 
-        success: false, 
-        message: 'No credentials stored for this location' 
+      return res.json({
+        success: true,
+        credentials: null
       });
     }
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       credentials: {
-        locationId: credentials.locationId,
+        mode: credentials.mode,
         apiKey: credentials.apiKey,
         xSignatureKey: credentials.xSignatureKey,
-        collectionId: credentials.collectionId,
-        mode: credentials.mode
+        collectionId: credentials.collectionId
       }
     });
   } catch (error) {
     console.error('Error fetching credentials:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to get credentials',
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch configuration information'
     });
   }
 });
 
 /**
- * GET /api/billplz/test-connection/:locationId
- * Test connection to Billplz API using stored configuration for specific locationId.
+ * GET /api/billplz/test-connection
+ * Test connection to Billplz API using stored configuration.
  */
-router.get('/test-connection/:locationId', async (req, res) => {
+router.get('/test-connection', async (req, res) => {
   try {
-    const { locationId } = req.params;
-    const credentials = await BillplzCredential.findOne({ locationId });
+    const credentials = await BillplzCredential.findOne();
+    
     if (!credentials) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No credentials stored for this location' 
+      return res.status(404).json({
+        success: false,
+        message: 'Configuration not found'
       });
     }
 
-    const baseUrl = credentials.mode === 'production'
-      ? 'https://www.billplz.com/api/v3'
-      : 'https://www.billplz-sandbox.com/api/v3';
+    const baseUrl = credentials.mode === 'sandbox' 
+      ? 'https://www.billplz-sandbox.com/api/v3'
+      : 'https://www.billplz.com/api/v3';
 
     const response = await axios.get(`${baseUrl}/collections/${credentials.collectionId}`, {
-      headers: {
-        'Authorization': `Basic ${Buffer.from(`${credentials.apiKey}:`).toString('base64')}`
+      auth: {
+        username: credentials.apiKey,
+        password: ''
       }
     });
 
-    res.json({ 
-      success: true, 
-      message: 'Connection successful',
-      data: response.data 
-    });
+    if (response.status === 200) {
+      res.json({
+        success: true,
+        message: 'Connection successful',
+        mode: credentials.mode
+      });
+    } else {
+      throw new Error('Unexpected response from Billplz API');
+    }
   } catch (error) {
     console.error('Error testing connection:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to test connection',
-      error: error.response?.data || error.message 
+    res.status(500).json({
+      success: false,
+      message: error.response?.data?.error?.message || 'Failed to connect to Billplz'
     });
   }
 });
 
 /**
- * POST /api/billplz/pay/:locationId
- * Endpoint to create payment for specific locationId
+ * POST /api/billplz/pay
+ * Endpoint to create payment
  */
-router.post('/pay/:locationId', async (req, res) => {
+router.post('/pay', async (req, res) => {
   try {
-    const { locationId } = req.params;
-    const credentials = await BillplzCredential.findOne({ locationId });
-    if (!credentials) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No credentials stored for this location' 
-      });
-    }
-
-    const { amount, name, email, phone, description } = req.body;
-    if (!amount || !name || !email) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Amount, name and email are required' 
-      });
-    }
-
-    const baseUrl = credentials.mode === 'production'
-      ? 'https://www.billplz.com/api/v3'
-      : 'https://www.billplz-sandbox.com/api/v3';
-
-    const response = await axios.post(`${baseUrl}/bills`, {
-      collection_id: credentials.collectionId,
-      email: email,
-      name: name,
-      amount: amount * 100, // Convert to cents
-      description: description || 'Payment',
-      callback_url: `${process.env.BASE_URL}/api/billplz/redirect/${locationId}`,
-      redirect_url: `${process.env.BASE_URL}/api/billplz/redirect/${locationId}`,
-      phone: phone
-    }, {
-      headers: {
-        'Authorization': `Basic ${Buffer.from(`${credentials.apiKey}:`).toString('base64')}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    res.json({
-      success: true,
-      billId: response.data.id,
-      url: response.data.url
-    });
-  } catch (error) {
-    console.error('Error creating bill:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to create bill',
-      error: error.response?.data || error.message 
-    });
-  }
-});
-
-/**
- * POST /api/billplz/query/:locationId
- * Endpoint to query payment status for specific locationId
- */
-router.post('/query/:locationId', async (req, res) => {
-  try {
-    const { locationId } = req.params;
-    const credentials = await BillplzCredential.findOne({ locationId });
-    if (!credentials) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No credentials stored for this location' 
-      });
-    }
-
-    const { billId } = req.body;
-    if (!billId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Bill ID is required' 
-      });
-    }
-
-    const baseUrl = credentials.mode === 'production'
-      ? 'https://www.billplz.com/api/v3'
-      : 'https://www.billplz-sandbox.com/api/v3';
-
-    const response = await axios.get(`${baseUrl}/bills/${billId}`, {
-      headers: {
-        'Authorization': `Basic ${Buffer.from(`${credentials.apiKey}:`).toString('base64')}`
-      }
-    });
-
-    res.json({
-      success: true,
-      status: response.data.state,
-      paid: response.data.paid,
-      amount: response.data.amount,
-      paid_amount: response.data.paid_amount
-    });
-  } catch (error) {
-    console.error('Error querying bill:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to get bill status',
-      error: error.response?.data || error.message 
-    });
-  }
-});
-
-/**
- * GET /api/billplz/redirect/:locationId
- * Endpoint to receive callback from Billplz after payment.
- */
-router.get('/redirect/:locationId', async (req, res) => {
-  try {
-    const { locationId } = req.params;
-    const credentials = await BillplzCredential.findOne({ locationId });
-    if (credentials) {
-      // TODO: Implement X-Signature verification
-      console.log('Billplz callback received for locationId:', locationId, req.query);
-    }
+    const credentials = await BillplzCredential.findOne();
     
-    res.send("Payment has been processed. You may close this window.");
+    if (!credentials) {
+      return res.status(404).json({
+        success: false,
+        message: 'Configuration not found'
+      });
+    }
+
+    const baseUrl = credentials.mode === 'sandbox' 
+      ? 'https://www.billplz-sandbox.com/api/v3'
+      : 'https://www.billplz.com/api/v3';
+
+    const response = await axios.post(
+      `${baseUrl}/bills`,
+      {
+        collection_id: credentials.collectionId,
+        email: req.body.email,
+        name: req.body.name,
+        amount: req.body.amount * 100, // Convert to cents
+        description: req.body.description,
+        callback_url: `${process.env.BASE_URL}/api/billplz/redirect`,
+        redirect_url: `${process.env.BASE_URL}/api/billplz/redirect`
+      },
+      {
+        auth: {
+          username: credentials.apiKey,
+          password: ''
+        }
+      }
+    );
+
+    res.json({
+      success: true,
+      data: response.data
+    });
+  } catch (error) {
+    console.error('Error creating payment:', error);
+    res.status(500).json({
+      success: false,
+      message: error.response?.data?.error?.message || 'Failed to create payment'
+    });
+  }
+});
+
+/**
+ * POST /api/billplz/query
+ * Endpoint to query payment status
+ */
+router.post('/query', async (req, res) => {
+  try {
+    const credentials = await BillplzCredential.findOne();
+    
+    if (!credentials) {
+      return res.status(404).json({
+        success: false,
+        message: 'Configuration not found'
+      });
+    }
+
+    const baseUrl = credentials.mode === 'sandbox' 
+      ? 'https://www.billplz-sandbox.com/api/v3'
+      : 'https://www.billplz.com/api/v3';
+
+    const response = await axios.get(
+      `${baseUrl}/bills/${req.body.billId}`,
+      {
+        auth: {
+          username: credentials.apiKey,
+          password: ''
+        }
+      }
+    );
+
+    res.json({
+      success: true,
+      data: response.data
+    });
+  } catch (error) {
+    console.error('Error querying payment:', error);
+    res.status(500).json({
+      success: false,
+      message: error.response?.data?.error?.message || 'Failed to check payment status'
+    });
+  }
+});
+
+/**
+ * GET /api/billplz/redirect
+ * Handle Billplz redirect after payment
+ */
+router.get('/redirect', async (req, res) => {
+  try {
+    const credentials = await BillplzCredential.findOne();
+    
+    if (!credentials) {
+      return res.status(404).json({
+        success: false,
+        message: 'Configuration not found'
+      });
+    }
+
+    console.log('Billplz callback received:', req.query);
+
+    // Verify signature
+    const signature = req.headers['x-billplz-signature'];
+    if (!signature) {
+      return res.status(400).json({
+        success: false,
+        message: 'Signature not found'
+      });
+    }
+
+    // TODO: Implement signature verification
+
+    res.json({
+      success: true,
+      message: 'Payment successful',
+      data: req.query
+    });
   } catch (error) {
     console.error('Error handling redirect:', error);
-    res.status(500).send("Error processing payment.");
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process payment'
+    });
   }
 });
 
-const billplz = () => {
-    console.log("Billplz route is working!");
-  };
-  
-
-  export default router;
+export default router;
