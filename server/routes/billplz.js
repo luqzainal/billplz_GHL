@@ -6,12 +6,39 @@ import BillplzCredential from '../models/BillplzCredential.js';
 const router = express.Router();
 
 /**
+ * POST /api/billplz/verify-password
+ * Verify admin password to unlock production settings.
+ */
+router.post('/verify-password', async (req, res) => {
+  const { password } = req.body;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminPassword) {
+    console.error('ADMIN_PASSWORD environment variable is not set.');
+    return res.status(500).json({
+      success: false,
+      message: 'Server configuration error: Admin password not set.'
+    });
+  }
+
+  if (password && password === adminPassword) {
+    res.json({ success: true });
+  } else {
+    res.status(401).json({
+      success: false,
+      message: 'Invalid password'
+    });
+  }
+});
+
+/**
  * POST /api/billplz/credentials
  * Save Billplz configuration.
  */
 router.post('/credentials', async (req, res) => {
   try {
-    const { apiKey, xSignatureKey, collectionId, mode, password } = req.body;
+    // Password verification is now handled by /verify-password endpoint
+    const { apiKey, xSignatureKey, collectionId, mode } = req.body;
 
     // Validate required fields
     if (!apiKey || !xSignatureKey || !collectionId || !mode) {
@@ -19,24 +46,6 @@ router.post('/credentials', async (req, res) => {
         success: false,
         message: 'API Key, X-Signature Key, Collection ID, and Mode are required'
       });
-    }
-
-    // Check password for production mode
-    if (mode === 'production') {
-      const adminPassword = process.env.ADMIN_PASSWORD;
-      if (!adminPassword) {
-        console.error('ADMIN_PASSWORD environment variable is not set.');
-        return res.status(500).json({
-          success: false,
-          message: 'Server configuration error: Admin password not set.'
-        });
-      }
-      if (!password || password !== adminPassword) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid password for production credentials'
-        });
-      }
     }
 
     // If record exists for this mode, update it; if not, create new
