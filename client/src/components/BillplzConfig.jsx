@@ -28,6 +28,7 @@ const BillplzConfig = () => {
   const [success, setSuccess] = useState(null);
   const [sandboxConnected, setSandboxConnected] = useState(false);
   const [productionConnected, setProductionConnected] = useState(false);
+  const [productionPassword, setProductionPassword] = useState('');
 
   useEffect(() => {
     fetchCredentials();
@@ -65,6 +66,16 @@ const BillplzConfig = () => {
   const handleConnect = async (mode) => {
     const credentials = mode === 'sandbox' ? sandboxCredentials : productionCredentials;
     
+    const dataToSend = { ...credentials };
+
+    if (mode === 'production') {
+      if (!productionPassword) {
+        setError('Admin password is required to save production credentials');
+        return;
+      }
+      dataToSend.password = productionPassword;
+    }
+    
     if (!credentials.apiKey || !credentials.xSignatureKey || !credentials.collectionId) {
       setError('All fields are required');
       return;
@@ -76,7 +87,7 @@ const BillplzConfig = () => {
     setSuccess(null);
 
     try {
-      const response = await axios.post('/api/billplz/credentials', credentials);
+      const response = await axios.post('/api/billplz/credentials', dataToSend);
       
       if (response.data.success) {
         setSuccess(`Configuration for ${mode === 'sandbox' ? 'Sandbox' : 'Production'} saved successfully`);
@@ -156,6 +167,22 @@ const BillplzConfig = () => {
             disabled={isLoading}
           />
         </div>
+        {mode === 'production' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Admin Password
+            </label>
+            <input
+              type="password"
+              value={productionPassword}
+              onChange={(e) => setProductionPassword(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              placeholder="Enter password to save production keys"
+              disabled={isLoading}
+              required
+            />
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <button
             type="button"

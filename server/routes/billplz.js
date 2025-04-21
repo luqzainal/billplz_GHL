@@ -11,13 +11,32 @@ const router = express.Router();
  */
 router.post('/credentials', async (req, res) => {
   try {
-    const { apiKey, xSignatureKey, collectionId, mode } = req.body;
+    const { apiKey, xSignatureKey, collectionId, mode, password } = req.body;
 
-    if (!apiKey || !xSignatureKey || !collectionId) {
+    // Validate required fields
+    if (!apiKey || !xSignatureKey || !collectionId || !mode) {
       return res.status(400).json({
         success: false,
-        message: 'All fields are required'
+        message: 'API Key, X-Signature Key, Collection ID, and Mode are required'
       });
+    }
+
+    // Check password for production mode
+    if (mode === 'production') {
+      const adminPassword = process.env.ADMIN_PASSWORD;
+      if (!adminPassword) {
+        console.error('ADMIN_PASSWORD environment variable is not set.');
+        return res.status(500).json({
+          success: false,
+          message: 'Server configuration error: Admin password not set.'
+        });
+      }
+      if (!password || password !== adminPassword) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid password for production credentials'
+        });
+      }
     }
 
     // If record exists for this mode, update it; if not, create new
