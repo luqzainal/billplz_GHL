@@ -163,8 +163,8 @@ router.post('/ghl-token', async (req, res) => {
     }
 
     const requestBody = {
-      client_id: process.env.GHL_CLIENT_ID, // Assuming GHL_CLIENT_ID is in .env
-      client_secret: process.env.GHL_CLIENT_SECRET, // Assuming GHL_CLIENT_SECRET is in .env
+      client_id: process.env.CLIENT_ID, // Updated to use CLIENT_ID directly
+      client_secret: process.env.CLIENT_SECRET, // Updated to use CLIENT_SECRET directly
       grant_type: grant_type,
     };
 
@@ -175,7 +175,7 @@ router.post('/ghl-token', async (req, res) => {
       }
       // redirect_uri is typically required for authorization_code flow
       // It should match the one used during the authorization request.
-      requestBody.redirect_uri = process.env.GHL_REDIRECT_URI; // Assuming GHL_REDIRECT_URI is in .env
+      requestBody.redirect_uri = process.env.REDIRECT_URI; // Updated to use REDIRECT_URI directly
     } else if (grant_type === 'refresh_token') {
       requestBody.refresh_token = req_refresh_token;
       if (user_type) { // user_type can also be provided with refresh_token
