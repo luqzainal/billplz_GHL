@@ -1,6 +1,6 @@
 import express from 'express';
 import axios from 'axios';
-import BillplzCredential from '../models/BillplzCredential.js';
+// import BillplzCredential from '../models/BillplzCredential.js'; // Removed as it's not used in this GHL OAuth specific file
 
 const router = express.Router();
 
@@ -13,7 +13,7 @@ router.get('/callback', async (req, res) => {
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Billplz Installation Failed</title>
+            <title>Application Connection Failed</title>
             <script src="https://cdn.tailwindcss.com"></script>
           </head>
           <body class="bg-gray-100">
@@ -25,7 +25,7 @@ router.get('/callback', async (req, res) => {
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </div>
-                  <h2 class="text-2xl font-bold text-gray-900 mb-2">Installation Failed</h2>
+                  <h2 class="text-2xl font-bold text-gray-900 mb-2">Connection Failed</h2>
                   <p class="text-gray-600">Authorization code not found. Please try again.</p>
                 </div>
               </div>
@@ -36,41 +36,58 @@ router.get('/callback', async (req, res) => {
     }
 
     // Exchange code for access token
-    const tokenResponse = await axios.post('https://www.billplz.com/api/v3/oauth/token', {
-      grant_type: 'authorization_code',
-      code: code,
-      client_id: process.env.CLIENT_ID,
-      client_secret: process.env.CLIENT_SECRET,
-      redirect_uri: process.env.REDIRECT_URI
+    const params = new URLSearchParams();
+    params.append('grant_type', 'authorization_code');
+    params.append('code', code);
+    params.append('client_id', process.env.GHL_CLIENT_ID || process.env.CLIENT_ID); // Use GHL specific or fallback
+    params.append('client_secret', process.env.GHL_CLIENT_SECRET || process.env.CLIENT_SECRET); // Use GHL specific or fallback
+    params.append('redirect_uri', process.env.GHL_REDIRECT_URI || process.env.REDIRECT_URI); // Use GHL specific or fallback
+    // user_type can be optionally sent as 'Location' or 'Company' if needed.
+    // params.append('user_type', 'Location');
+
+    const tokenResponse = await axios.post('https://services.leadconnectorhq.com/oauth/token', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
     });
 
     if (!tokenResponse.data.access_token) {
-      throw new Error('Access token not received');
+      throw new Error('GHL Access token not received');
     }
 
+    // Log GHL token data (access_token, locationId, companyId, userId etc.)
+    // These tokens should be stored securely, e.g., in a database associated with the location.
+    console.log('GHL Token Data:', tokenResponse.data);
+    // const { access_token, refresh_token, locationId, companyId, userId, expires_in, scope, userType } = tokenResponse.data;
+
+    // The following Billplz specific credential fetching and saving is incorrect in this GHL OAuth flow.
+    // Billplz credentials should be configured by the user within the app's custom page.
+    /*
     // Get user info
     const userResponse = await axios.get('https://www.billplz.com/api/v3/users/me', {
       headers: {
-        'Authorization': `Bearer ${tokenResponse.data.access_token}`
+        'Authorization': `Bearer ${tokenResponse.data.access_token}` // This would be GHL token, not Billplz
       }
     });
 
     // Save credentials
     const credentials = new BillplzCredential({
-      apiKey: tokenResponse.data.access_token,
+      apiKey: tokenResponse.data.access_token, // This was intended for Billplz token
       xSignatureKey: userResponse.data.x_signature_key,
       collectionId: userResponse.data.collection_id,
       mode: 'production'
     });
 
     await credentials.save();
+    */
 
     // Return success page
+    // The success message might need updating to reflect GHL app connection rather than Billplz plugin installation specifically.
     res.send(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Billplz Installation Successful</title>
+          <title>Application Connection Successful</title>
           <script src="https://cdn.tailwindcss.com"></script>
         </head>
         <body class="bg-gray-100">
@@ -82,8 +99,8 @@ router.get('/callback', async (req, res) => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h2 class="text-2xl font-bold text-gray-900 mb-2">Installation Successful!</h2>
-                <p class="text-gray-600 mb-6">Billplz plugin has been installed successfully.</p>
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Connection Successful!</h2>
+                <p class="text-gray-600 mb-6">The application has been connected successfully.</p>
                 <div class="mt-6">
                   <a href="/" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     Go to Dashboard
@@ -97,11 +114,12 @@ router.get('/callback', async (req, res) => {
     `);
   } catch (error) {
     console.error('Error in OAuth callback:', error);
+    const errorMessage = error.response?.data?.message || error.response?.data?.error_description || error.response?.data?.error?.message || 'Failed in OAuth process';
     res.status(500).send(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Billplz Installation Failed</title>
+          <title>Application Connection Failed</title>
           <script src="https://cdn.tailwindcss.com"></script>
         </head>
         <body class="bg-gray-100">
@@ -113,8 +131,8 @@ router.get('/callback', async (req, res) => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
-                <h2 class="text-2xl font-bold text-gray-900 mb-2">Installation Failed</h2>
-                <p class="text-gray-600">${error.response?.data?.error?.message || 'Failed in OAuth process'}</p>
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Connection Failed</h2>
+                <p class="text-gray-600">${errorMessage}</p>
                 <div class="mt-6">
                   <a href="/" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     Try Again
