@@ -39,9 +39,9 @@ router.get('/callback', async (req, res) => {
     const params = new URLSearchParams();
     params.append('grant_type', 'authorization_code');
     params.append('code', code);
-    params.append('client_id', process.env.GHL_CLIENT_ID || process.env.CLIENT_ID); // Use GHL specific or fallback
-    params.append('client_secret', process.env.GHL_CLIENT_SECRET || process.env.CLIENT_SECRET); // Use GHL specific or fallback
-    params.append('redirect_uri', process.env.GHL_REDIRECT_URI || process.env.REDIRECT_URI); // Use GHL specific or fallback
+    params.append('client_id', process.env.CLIENT_ID); // Directly use CLIENT_ID
+    params.append('client_secret', process.env.CLIENT_SECRET); // Directly use CLIENT_SECRET
+    params.append('redirect_uri', process.env.REDIRECT_URI); // Directly use REDIRECT_URI
     // user_type can be optionally sent as 'Location' or 'Company' if needed.
     // params.append('user_type', 'Location');
 
