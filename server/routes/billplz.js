@@ -1,7 +1,7 @@
 // server/routes/billplz.js
 import express from 'express';
 import axios from 'axios';
-import BillplzCredential from '../models/BillplzCredential.js';
+import { refreshAccessToken } from '../utils/ghl.js';
 
 const router = express.Router();
 
@@ -296,6 +296,69 @@ router.get('/redirect', async (req, res) => {
       success: false,
       message: 'Failed to process payment'
     });
+  }
+});
+
+// Laluan untuk GHL panggil bagi tujuan pembayaran
+router.post('/payment', (req, res) => {
+  // Logik untuk memulakan sesi pembayaran dengan Billplz
+  // Akan dilaksanakan kemudian
+  console.log('Received payment request from GHL:', req.body);
+  res.status(501).send('Payment endpoint not implemented yet.');
+});
+
+// Laluan untuk GHL panggil bagi tujuan pertanyaan (cth: semak status bayaran)
+router.post('/query', (req, res) => {
+  // Logik untuk pertanyaan event berkaitan pembayaran
+  // Akan dilaksanakan kemudian
+  console.log('Received query request from GHL:', req.body);
+  res.status(501).send('Query endpoint not implemented yet.');
+});
+
+// Laluan untuk simpan kelayakan Billplz ke GHL
+router.post('/save-credentials', async (req, res) => {
+  const { locationId, apiKey, xSignatureKey, collectionId, mode } = req.body;
+
+  if (!locationId || !apiKey || !xSignatureKey || !collectionId || !mode) {
+    return res.status(400).json({ success: false, message: 'Missing required fields.' });
+  }
+
+  try {
+    const accessToken = await refreshAccessToken(locationId);
+
+    const providerConfig = {
+      [mode]: {
+        apiKey: apiKey, // Billplz API Key
+        publishableKey: xSignatureKey, // Billplz X-Signature Key
+        collectionId: collectionId // Billplz Collection ID
+      }
+    };
+    
+    // Untuk memastikan kedua-dua mod 'live' dan 'test' wujud
+    if (mode === 'live') {
+        providerConfig.test = { apiKey: '', publishableKey: '', collectionId: '' };
+    } else {
+        providerConfig.live = { apiKey: '', publishableKey: '', collectionId: '' };
+    }
+
+
+    await axios.post(
+      `https://services.leadconnectorhq.com/payments/custom-provider/connect?locationId=${locationId}`,
+      providerConfig,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Version: '2021-07-28',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    res.json({ success: true, message: 'Credentials saved successfully!' });
+
+  } catch (error) {
+    console.error('Error saving credentials to GHL:', error.response ? error.response.data : error.message);
+    res.status(500).json({ success: false, message: 'Failed to save credentials.' });
   }
 });
 
