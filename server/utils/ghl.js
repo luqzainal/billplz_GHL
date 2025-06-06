@@ -15,8 +15,8 @@ const refreshAccessToken = async (locationId) => {
   // Jika tamat tempoh, dapatkan token baru
   console.log('Refreshing GHL access token for location:', locationId);
   const tokenResponse = await axios.post('https://services.leadconnectorhq.com/oauth/token', new URLSearchParams({
-    client_id: process.env.GHL_CLIENT_ID,
-    client_secret: process.env.GHL_CLIENT_SECRET,
+    client_id: process.env.CLIENT_ID,
+    client_secret: process.env.CLIENT_SECRET,
     grant_type: 'refresh_token',
     refresh_token: ghlAuth.refresh_token,
     user_type: 'Location',

@@ -57,12 +57,12 @@ const BillplzConfig = () => {
       });
       
       if (response.data.success) {
-        setSuccess(`Konfigurasi untuk mod ${activeMode} berjaya disimpan!`);
+        setSuccess(`Configuration for ${activeMode} mode saved successfully!`);
       } else {
-        setError(response.data.message || 'Gagal menyimpan konfigurasi.');
+        setError(response.data.message || 'Failed to save configuration.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Ralat semasa menyimpan konfigurasi.');
+      setError(err.response?.data?.message || 'Error while saving configuration.');
     } finally {
       setLoading(false);
     }
@@ -80,7 +80,7 @@ const BillplzConfig = () => {
             value={credentials.apiKey}
             onChange={(e) => handleInputChange('apiKey', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            placeholder="Masukkan API Key Billplz"
+            placeholder="Enter Billplz API Key"
             required
             disabled={loading}
           />
@@ -94,7 +94,7 @@ const BillplzConfig = () => {
             value={credentials.xSignatureKey}
             onChange={(e) => handleInputChange('xSignatureKey', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            placeholder="Masukkan X-Signature Key Billplz"
+            placeholder="Enter Billplz X-Signature Key"
             required
             disabled={loading}
           />
@@ -108,7 +108,7 @@ const BillplzConfig = () => {
             value={credentials.collectionId}
             onChange={(e) => handleInputChange('collectionId', e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            placeholder="Masukkan Collection ID Billplz"
+            placeholder="Enter Billplz Collection ID"
             required
             disabled={loading}
           />
@@ -127,7 +127,7 @@ const BillplzConfig = () => {
             disabled={loading}
             className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
           >
-            {loading ? 'Menyimpan...' : 'Simpan Konfigurasi'}
+            {loading ? 'Saving...' : 'Save Configuration'}
           </button>
         </div>
       </form>
@@ -138,10 +138,10 @@ const BillplzConfig = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-xl">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Konfigurasi Billplz Payment Gateway
+          Billplz Payment Gateway Configuration
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Sila masukkan kelayakan Billplz anda.
+          Please enter your Billplz credentials.
         </p>
       </div>
 
