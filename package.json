@@ -1,19 +1,21 @@
 {
-  "name": "billplz-payment",
+  "name": "billplz-app",
   "version": "1.0.0",
-  "description": "Billplz Payment Integration",
-  "main": "server.js",
+  "description": "Billplz integration for GHL",
+  "main": "server/index.js",
   "type": "module",
   "scripts": {
     "dev": "nodemon server.js",
     "client": "cd client && npm start",
     "server": "cd server && npm run dev",
     "build": "npm install && npm install --prefix client && npm run build --prefix client",
-    "start": "set NODE_ENV=production && node server.js"
+    "start": "node server/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "payment",
-    "billplz"
+    "billplz",
+    "ghl",
+    "payment-gateway"
   ],
   "dependencies": {
     "express": "^4.18.2",
