@@ -56,18 +56,18 @@ router.get('/callback', async (req, res) => {
 
     // Step 3: Create integration provider in GHL
     console.log('Step 3: Creating integration provider in GHL...');
-    if (!process.env.APP_URL) {
-        console.error('CRITICAL: APP_URL environment variable is not set. This will cause the integration creation to fail.');
-        throw new Error('Server configuration error: APP_URL is not set.');
+    if (!process.env.REACT_APP_API_URL) {
+        console.error('CRITICAL: REACT_APP_API_URL environment variable is not set. This will cause the integration creation to fail.');
+        throw new Error('Server configuration error: REACT_APP_API_URL is not set.');
     }
     await axios.post(
       `https://services.leadconnectorhq.com/payments/custom-provider/provider?locationId=${locationId}`,
       {
         name: 'Billplz',
         description: 'Accept payments through Billplz, Malaysia\'s favorite payment gateway.',
-        paymentsUrl: `${process.env.APP_URL}/api/billplz/payment`,
-        queryUrl: `${process.env.APP_URL}/api/billplz/query`,
-        imageUrl: `${process.env.APP_URL}/billplz-logo.png`,
+        paymentsUrl: `${process.env.REACT_APP_API_URL}/api/billplz/payment`,
+        queryUrl: `${process.env.REACT_APP_API_URL}/api/billplz/query`,
+        imageUrl: `${process.env.REACT_APP_API_URL}/billplz-logo.png`,
       },
       {
         headers: { Authorization: `Bearer ${access_token}`, Version: '2021-07-28' },
@@ -80,7 +80,7 @@ router.get('/callback', async (req, res) => {
     res.redirect(`/?locationId=${locationId}`);
 
   } catch (error) {
-    const step = error.message.includes('APP_URL') ? 'Step 3 (Integration Creation)' 
+    const step = error.message.includes('REACT_APP_API_URL') ? 'Step 3 (Integration Creation)' 
         : error.config?.url.includes('token') ? 'Step 1 (Token Exchange)' 
         : error.config?.url.includes('provider') ? 'Step 3 (Integration Creation)'
         : 'Unknown Step';
@@ -91,7 +91,7 @@ router.get('/callback', async (req, res) => {
     if (step === 'Step 1 (Token Exchange)') {
         userMessage = `Could not get authorization from GHL. Please check your Client ID and Client Secret, and then try reinstalling the app.`;
     } else if (step === 'Step 3 (Integration Creation)') {
-        userMessage = `Authentication was successful, but the app failed to register itself inside GHL. This is likely due to a server configuration issue (missing APP_URL). Please contact support.`;
+        userMessage = `Authentication was successful, but the app failed to register itself inside GHL. This is likely due to a server configuration issue (missing REACT_APP_API_URL). Please contact support.`;
     }
 
     res.status(500).send(`
