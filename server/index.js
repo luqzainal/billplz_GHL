@@ -24,13 +24,33 @@ app.use(express.json());
 app.use('/api/billplz', billplzRoutes);
 app.use("/api/oauth", oauthRoutes);
 
-// Serve static files from the React app build directory
-app.use(express.static(path.join(__dirname, '../../client/build')));
+// --- Static assets ---
+const clientBuildPath = path.join(__dirname, '..', 'client', 'build');
+console.log(`[Server] Serving static files from: ${clientBuildPath}`);
 
-// The "catchall" handler: for any request that doesn't
-// match one above, send back React's index.html file.
+app.use(express.static(clientBuildPath));
+
+// The "catchall" handler
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../client/build/index.html'));
+    // Log any request that falls through to here
+    console.log(`[Server] Catch-all route triggered for: ${req.originalUrl}`);
+    
+    // Serve the main page for any non-API request
+    if (!req.originalUrl.startsWith('/api')) {
+        const indexPath = path.join(clientBuildPath, 'index.html');
+        console.log(`[Server] Attempting to serve index.html from: ${indexPath}`);
+        
+        res.sendFile(indexPath, (err) => {
+            if (err) {
+                console.error('[Server] CRITICAL: Could not send index.html.', err);
+                res.status(500).send('Server error: Could not load the application. Check logs for details.');
+            }
+        });
+    } else {
+        // This handles API calls to routes that don't exist
+        console.log(`[Server] Unmatched API route: ${req.originalUrl}`);
+        res.status(404).send('API route not found');
+    }
 });
 
 // Connect to MongoDB
@@ -40,7 +60,7 @@ mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI, {
   useUnifiedTopology: true,
 })
 .then(() => {
-    console.log('MongoDB Connected');
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    console.log('[Server] MongoDB Connected.');
+    app.listen(PORT, () => console.log(`[Server] Running on port ${PORT}.`));
 })
-.catch(err => console.error('MongoDB connection error:', err));
+.catch(err => console.error('[Server] MongoDB connection error:', err));
