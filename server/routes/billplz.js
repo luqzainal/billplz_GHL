@@ -1,7 +1,6 @@
 // server/routes/billplz.js
 import express from 'express';
 import axios from 'axios';
-import { refreshAccessToken } from '../utils/ghl.js';
 import BillplzCredential from '../models/BillplzCredential.js';
 
 const router = express.Router();
@@ -297,55 +296,6 @@ router.get('/redirect', async (req, res) => {
       success: false,
       message: 'Failed to process payment'
     });
-  }
-});
-
-// Route for GHL to call for payment purposes
-router.post('/payment', async (req, res) => {
-  console.log('Received payment request from GHL. Query:', req.query, 'Body:', req.body);
-  const { locationId } = req.query; // Assuming GHL sends locationId as a query param
-  if (!locationId) {
-    return res.status(400).send('Location ID is missing.');
-  }
-  // Logic to get credentials from DB and initiate Billplz payment
-  res.status(501).send('Payment endpoint not implemented yet.');
-});
-
-// Route for GHL to call for query purposes
-router.post('/query', async (req, res) => {
-  console.log('Received query request from GHL. Query:', req.query, 'Body:', req.body);
-  const { locationId } = req.query; // Assuming GHL sends locationId as a query param
-  if (!locationId) {
-    return res.status(400).send('Location ID is missing.');
-  }
-  // Logic to get credentials from DB and make a payment query
-  res.status(501).send('Query endpoint not implemented yet.');
-});
-
-// Route to save Billplz credentials to the local database
-router.post('/save-credentials', async (req, res) => {
-  const { locationId, apiKey, xSignatureKey, collectionId, mode } = req.body;
-
-  if (!locationId || !apiKey || !xSignatureKey || !collectionId || !mode) {
-    return res.status(400).json({ success: false, message: 'Missing required fields.' });
-  }
-
-  try {
-    await BillplzCredential.findOneAndUpdate(
-      { locationId, mode },
-      { apiKey, xSignatureKey, collectionId },
-      { upsert: true, new: true, runValidators: true }
-    );
-
-    res.json({ success: true, message: `Credentials for ${mode} mode saved successfully!` });
-
-  } catch (error) {
-    console.error('Error saving credentials to DB:', error);
-    // Handle duplicate key error nicely
-    if (error.code === 11000) {
-      return res.status(409).json({ success: false, message: 'Failed to save credentials due to a conflict. Please try again.' });
-    }
-    res.status(500).json({ success: false, message: 'Failed to save credentials.' });
   }
 });
 
