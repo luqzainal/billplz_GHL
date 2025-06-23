@@ -36,8 +36,8 @@ router.get('/callback', async (req, res) => {
   }
 
   // Check environment variables
-  if (!process.env.CLIENT_ID || !process.env.CLIENT_SECRET || !process.env.REDIRECT_URI) {
-    console.error('Missing environment variables');
+  if (!process.env.CLIENT_ID || !process.env.CLIENT_SECRET || !process.env.REDIRECT_URI || !process.env.REACT_APP_API_URL) {
+    console.error('Missing environment variables: CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, REACT_APP_API_URL');
     return res.status(500).send(`
       <!DOCTYPE html>
       <html>
@@ -123,6 +123,9 @@ router.get('/callback', async (req, res) => {
     timeout: 10000
   });
 
+  // Clean up base URL by removing trailing slash
+  const cleanBaseUrl = process.env.REACT_APP_API_URL.replace(/\/$/, '');
+
   // Create payment provider integration
   const providerOptions = {
     method: 'POST',
@@ -137,9 +140,9 @@ router.get('/callback', async (req, res) => {
     data: {
       name: 'Billplz Payment Integration',
       description: 'This payment gateway supports payments in Malaysia via Billplz.',
-      paymentsUrl: `${process.env.BASE_URL || 'https://billplz-app-ceulb.ondigitalocean.app'}/payment`,
-      queryUrl: `${process.env.BASE_URL || 'https://billplz-app-ceulb.ondigitalocean.app'}/payment/verify`,
-      imageUrl: `${process.env.BASE_URL || 'https://billplz-app-ceulb.ondigitalocean.app'}/billplz-favicon.png`
+      paymentsUrl: `${cleanBaseUrl}/payment`,
+      queryUrl: `${cleanBaseUrl}/payment/verify`,
+      imageUrl: `${cleanBaseUrl}/billplz-favicon.png`
     },
     timeout: 10000
   };
