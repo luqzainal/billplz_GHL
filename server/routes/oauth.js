@@ -44,6 +44,35 @@ router.get('/callback', async (req, res) => {
     `);
   }
 
+  // Validate authorization code format
+  if (typeof code !== 'string' || code.trim() === '') {
+    console.error('Invalid authorization code format:', code);
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>GHL Integration Failed</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-gray-100">
+          <div class="min-h-screen flex items-center justify-center">
+            <div class="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+              <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                  <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Integration Failed</h2>
+                <p class="text-gray-600">Invalid authorization code format</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+
   try {
     // Check environment variables
     if (!process.env.CLIENT_ID || !process.env.CLIENT_SECRET || !process.env.REDIRECT_URI || !process.env.REACT_APP_API_URL) {
@@ -88,6 +117,24 @@ router.get('/callback', async (req, res) => {
       redirect_uri: process.env.REDIRECT_URI
     });
 
+    // Validate environment variables format
+    if (!process.env.CLIENT_ID || process.env.CLIENT_ID.trim() === '') {
+      throw new Error('CLIENT_ID is empty or invalid');
+    }
+    if (!process.env.CLIENT_SECRET || process.env.CLIENT_SECRET.trim() === '') {
+      throw new Error('CLIENT_SECRET is empty or invalid');
+    }
+    if (!process.env.REDIRECT_URI || process.env.REDIRECT_URI.trim() === '') {
+      throw new Error('REDIRECT_URI is empty or invalid');
+    }
+
+    // Validate redirect URI format
+    try {
+      new URL(process.env.REDIRECT_URI);
+    } catch (error) {
+      throw new Error('REDIRECT_URI is not a valid URL');
+    }
+
     const options = {
       method: 'POST',
       url: 'https://services.leadconnectorhq.com/oauth/token',
@@ -95,12 +142,18 @@ router.get('/callback', async (req, res) => {
         'Content-Type': 'application/x-www-form-urlencoded',
         Accept: 'application/json'
       },
-      data: encodedParams,
+      data: encodedParams.toString(),
       timeout: 10000 // 10 second timeout
     };
 
     console.log('Making OAuth token request to:', options.url);
+    console.log('Request data:', encodedParams.toString());
+    console.log('Request headers:', options.headers);
+    
     const tokenResponse = await axios.request(options);
+    
+    console.log('OAuth token response status:', tokenResponse.status);
+    console.log('OAuth token response data:', tokenResponse.data);
 
     if (!tokenResponse.data.access_token) {
       console.error('No access token received:', tokenResponse.data);
