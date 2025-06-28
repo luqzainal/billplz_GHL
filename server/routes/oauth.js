@@ -183,14 +183,6 @@ router.get('/callback', async (req, res) => {
       `);
     }
 
-    // Get user info from GHL
-    const userResponse = await axios.get('https://services.leadconnectorhq.com/users/me', {
-      headers: {
-        'Authorization': `Bearer ${tokenResponse.data.access_token}`,
-        'Version': '2021-07-28'
-      },
-      timeout: 10000
-    });
 
     // Clean up base URL by removing trailing slash
     const cleanBaseUrl = process.env.REACT_APP_API_URL.replace(/\/$/, '');
@@ -199,7 +191,7 @@ router.get('/callback', async (req, res) => {
     const providerOptions = {
       method: 'POST',
       url: 'https://services.leadconnectorhq.com/payments/custom-provider/provider',
-      params: { locationId: userResponse.data.locationId },
+      params: { locationId: tokenResponse.data.locationId },
       headers: {
         Authorization: `Bearer ${tokenResponse.data.access_token}`,
         Version: '2021-07-28',
@@ -222,7 +214,7 @@ router.get('/callback', async (req, res) => {
     const credentials = new BillplzCredential({
       apiKey: tokenResponse.data.access_token,
       xSignatureKey: tokenResponse.data.refresh_token,
-      collectionId: userResponse.data.locationId,
+      collectionId: tokenResponse.data.locationId,
       mode: 'production'
     });
 
