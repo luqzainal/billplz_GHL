@@ -89,11 +89,16 @@ router.post('/credentials', async (req, res) => {
 
 /**
  * GET /api/billplz/credentials
- * Get stored Billplz configuration.
+ * Get stored Billplz configuration for a specific mode.
  */
 router.get('/credentials', async (req, res) => {
   try {
-    const credentials = await BillplzCredential.findOne();
+    const { mode } = req.query;
+    if (!mode) {
+      return res.status(400).json({ success: false, message: 'Mode parameter is required' });
+    }
+
+    const credentials = await BillplzCredential.findOne({ mode });
     
     if (!credentials) {
       return res.json({
@@ -104,12 +109,7 @@ router.get('/credentials', async (req, res) => {
 
     res.json({
       success: true,
-      credentials: {
-        mode: credentials.mode,
-        apiKey: credentials.apiKey,
-        xSignatureKey: credentials.xSignatureKey,
-        collectionId: credentials.collectionId
-      }
+      credentials, // Return the whole object
     });
   } catch (error) {
     console.error('Error fetching credentials:', error);
@@ -122,16 +122,21 @@ router.get('/credentials', async (req, res) => {
 
 /**
  * GET /api/billplz/test-connection
- * Test connection to Billplz API using stored configuration.
+ * Test connection to Billplz API using stored configuration for a specific mode.
  */
 router.get('/test-connection', async (req, res) => {
   try {
-    const credentials = await BillplzCredential.findOne();
+    const { mode } = req.query;
+    if (!mode) {
+      return res.status(400).json({ success: false, message: 'Mode parameter is required' });
+    }
+
+    const credentials = await BillplzCredential.findOne({ mode });
     
     if (!credentials) {
       return res.status(404).json({
         success: false,
-        message: 'Configuration not found'
+        message: `Configuration for ${mode} mode not found`,
       });
     }
 
@@ -139,27 +144,22 @@ router.get('/test-connection', async (req, res) => {
       ? 'https://www.billplz-sandbox.com/api/v3'
       : 'https://www.billplz.com/api/v3';
 
-    const response = await axios.get(`${baseUrl}/collections/${credentials.collectionId}`, {
+    await axios.get(`${baseUrl}/check/api_key`, {
       auth: {
         username: credentials.apiKey,
         password: ''
       }
     });
 
-    if (response.status === 200) {
-      res.json({
-        success: true,
-        message: 'Connection successful',
-        mode: credentials.mode
-      });
-    } else {
-      throw new Error('Unexpected response from Billplz API');
-    }
+    res.json({
+      success: true,
+      message: `Connection to ${mode} mode successful`,
+    });
   } catch (error) {
-    console.error('Error testing connection:', error);
+    console.error(`Error testing ${mode} connection:`, error.message);
     res.status(500).json({
       success: false,
-      message: error.response?.data?.error?.message || 'Failed to connect to Billplz'
+      message: error.response?.data?.error?.message || `Failed to connect to Billplz in ${mode} mode.`
     });
   }
 });
