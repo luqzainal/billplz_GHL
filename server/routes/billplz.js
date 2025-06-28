@@ -252,7 +252,7 @@ router.post('/query', async (req, res) => {
     console.error('Error querying payment:', error);
     res.status(500).json({
       success: false,
-      message: error.response?.data?.error?.message || 'Failed to check payment status'
+      message: error.response?.data?.error?.message || 'Failed to query payment'
     });
   }
 });
@@ -295,6 +295,54 @@ router.get('/redirect', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to process payment'
+    });
+  }
+});
+
+/**
+ * POST /payment/verify
+ * GHL queryUrl endpoint to verify payment status.
+ */
+router.post('/payment/verify', async (req, res) => {
+  console.log('Received request on /payment/verify from GHL:', req.body);
+
+  // GHL usually sends transactionId or some identifier in the body
+  const { transactionId, paymentId } = req.body; 
+
+  if (!transactionId && !paymentId) {
+    console.error('No transactionId or paymentId received from GHL');
+    return res.status(400).json({ status: 'error', message: 'Missing transaction identifier.' });
+  }
+
+  try {
+    // TODO: Implement logic to query Billplz API
+    // 1. Get Billplz credentials from the database.
+    // 2. Use the transactionId/paymentId to find the corresponding Billplz Bill ID.
+    // 3. Make an API call to Billplz to get the bill status.
+    // 4. Map the Billplz status ('paid', 'due', 'overdue') to GHL expected statuses.
+
+    console.log(`Querying status for transaction: ${transactionId || paymentId}`);
+
+    // Placeholder response - assuming the payment is successful for now
+    const ghlStatus = {
+      status: 'paid', // Can be 'paid', 'unpaid', 'refunded', 'failed'
+      amount: 100.00, // Optional: amount paid
+      currency: 'MYR', // Optional: currency
+      transactionId: transactionId || paymentId, // Optional
+      providerData: {
+        billplzBillId: 'bill_xyz', // Example data
+        paidAt: new Date().toISOString()
+      }
+    };
+
+    console.log('Sending response to GHL:', ghlStatus);
+    res.json(ghlStatus);
+
+  } catch (error) {
+    console.error('Error in /payment/verify endpoint:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'An internal error occurred while verifying the payment.'
     });
   }
 });
