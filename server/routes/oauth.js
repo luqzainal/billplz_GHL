@@ -16,6 +16,14 @@ router.get('/callback', async (req, res) => {
     REACT_APP_API_URL: process.env.REACT_APP_API_URL ? 'Set' : 'Missing'
   });
 
+  // Debug environment variables values (without exposing secrets)
+  console.log('Environment variables debug:', {
+    CLIENT_ID_LENGTH: process.env.CLIENT_ID ? process.env.CLIENT_ID.length : 0,
+    CLIENT_SECRET_LENGTH: process.env.CLIENT_SECRET ? process.env.CLIENT_SECRET.length : 0,
+    REDIRECT_URI: process.env.REDIRECT_URI,
+    REACT_APP_API_URL: process.env.REACT_APP_API_URL
+  });
+
   if (!code) {
     console.error('No authorization code received');
     return res.status(400).send(`
@@ -72,6 +80,14 @@ router.get('/callback', async (req, res) => {
       </html>
     `);
   }
+
+  // Additional validation for authorization code
+  console.log('Authorization code validation:', {
+    codeLength: code.length,
+    codeStartsWith: code.substring(0, 10) + '...',
+    codeEndsWith: '...' + code.substring(code.length - 10),
+    codeContainsSpecialChars: /[^a-zA-Z0-9\-_\.]/.test(code)
+  });
 
   try {
     // Check environment variables
@@ -135,6 +151,13 @@ router.get('/callback', async (req, res) => {
       throw new Error('REDIRECT_URI is not a valid URL');
     }
 
+    // Additional validation for GHL credentials format
+    console.log('GHL Credentials validation:', {
+      CLIENT_ID_FORMAT: process.env.CLIENT_ID.includes('ghl_') ? 'Valid GHL format' : 'May not be GHL format',
+      CLIENT_SECRET_FORMAT: process.env.CLIENT_SECRET.length >= 20 ? 'Reasonable length' : 'Too short',
+      REDIRECT_URI_PROTOCOL: process.env.REDIRECT_URI.startsWith('https://') ? 'HTTPS' : 'Non-HTTPS'
+    });
+
     const options = {
       method: 'POST',
       url: 'https://services.leadconnectorhq.com/oauth/token',
@@ -150,6 +173,7 @@ router.get('/callback', async (req, res) => {
     console.log('Request data:', encodedParams.toString());
     console.log('Request headers:', options.headers);
     
+    console.log('=== STEP 1: OAuth Token Request ===');
     const tokenResponse = await axios.request(options);
     
     console.log('OAuth token response status:', tokenResponse.status);
@@ -183,6 +207,10 @@ router.get('/callback', async (req, res) => {
       `);
     }
 
+    console.log('=== STEP 2: Payment Provider Creation ===');
+    console.log('Access token received:', tokenResponse.data.access_token ? 'YES' : 'NO');
+    console.log('Location ID:', tokenResponse.data.locationId);
+    console.log('Base URL:', process.env.REACT_APP_API_URL);
 
     // Clean up base URL by removing trailing slash
     const cleanBaseUrl = process.env.REACT_APP_API_URL.replace(/\/$/, '');
@@ -208,7 +236,14 @@ router.get('/callback', async (req, res) => {
       timeout: 10000
     };
 
-    await axios.request(providerOptions);
+    console.log('Provider creation URL:', providerOptions.url);
+    console.log('Provider creation params:', providerOptions.params);
+    console.log('Provider creation headers:', providerOptions.headers);
+    console.log('Provider creation data:', providerOptions.data);
+
+    const providerResponse = await axios.request(providerOptions);
+    console.log('Provider creation response status:', providerResponse.status);
+    console.log('Provider creation response data:', providerResponse.data);
 
     // Save GHL credentials
     const credentials = new BillplzCredential({
@@ -252,6 +287,25 @@ router.get('/callback', async (req, res) => {
     `);
   } catch (error) {
     console.error('Error in OAuth callback:', error.message);
+    
+    // Specific handling for 403 errors
+    if (error.response && error.response.status === 403) {
+      console.error('=== 403 FORBIDDEN ERROR ANALYSIS ===');
+      console.error('This usually means:');
+      console.error('1. Invalid client credentials (CLIENT_ID/CLIENT_SECRET)');
+      console.error('2. Incorrect redirect URI');
+      console.error('3. Authorization code already used or expired');
+      console.error('4. Insufficient permissions for the API endpoint');
+      console.error('5. Rate limiting or IP restrictions');
+      
+      // Log request details for debugging
+      if (error.config) {
+        console.error('Failed request URL:', error.config.url);
+        console.error('Failed request method:', error.config.method);
+        console.error('Failed request headers:', error.config.headers);
+      }
+    }
+    
     if (error.response) {
       console.error('Error data:', error.response.data);
       console.error('Error status:', error.response.status);
@@ -279,6 +333,17 @@ router.get('/callback', async (req, res) => {
                 </div>
                 <h2 class="text-2xl font-bold text-gray-900 mb-2">Installation Failed</h2>
                 <p class="text-gray-600">${error.response?.data?.error?.message || error.response?.data?.message || error.message || 'An unexpected error occurred during the OAuth process.'}</p>
+                ${error.response?.status === 403 ? `
+                <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <h3 class="text-sm font-medium text-yellow-800 mb-2">Possible Solutions:</h3>
+                  <ul class="text-xs text-yellow-700 space-y-1">
+                    <li>• Check if CLIENT_ID and CLIENT_SECRET are correct</li>
+                    <li>• Verify REDIRECT_URI matches exactly with GHL app settings</li>
+                    <li>• Ensure authorization code hasn't expired (try again)</li>
+                    <li>• Check if your GHL app has required permissions</li>
+                  </ul>
+                </div>
+                ` : ''}
                 ${error.response?.data ? `<pre class="mt-4 text-xs text-gray-500 text-left overflow-auto">${JSON.stringify(error.response.data, null, 2)}</pre>` : ''}
               </div>
             </div>
