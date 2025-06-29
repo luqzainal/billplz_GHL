@@ -2,6 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import { URLSearchParams } from 'url';
 import BillplzCredential from '../models/BillplzCredential.js';
+import GhlCredential from '../models/GhlCredential.js';
 
 const router = express.Router();
 
@@ -245,15 +246,24 @@ router.get('/callback', async (req, res) => {
     console.log('Provider creation response status:', providerResponse.status);
     console.log('Provider creation response data:', providerResponse.data);
 
-    // Save GHL credentials
-    const credentials = new BillplzCredential({
-      apiKey: tokenResponse.data.access_token,
-      xSignatureKey: tokenResponse.data.refresh_token,
-      collectionId: tokenResponse.data.locationId,
-      mode: 'production'
-    });
+    // Save GHL credentials correctly
+    const { access_token, refresh_token, locationId } = tokenResponse.data;
 
-    await credentials.save();
+    console.log(`Saving GHL credentials for locationId: ${locationId}`);
+
+    // Use updateOne with upsert to create a new document if none exists, or update if it does.
+    await GhlCredential.updateOne(
+      { locationId: locationId },
+      {
+        $set: {
+          accessToken: access_token,
+          refreshToken: refresh_token,
+        }
+      },
+      { upsert: true } // This option creates the document if it does not exist.
+    );
+    
+    console.log('GHL credentials saved successfully.');
 
     // Return success page
     res.send(`
