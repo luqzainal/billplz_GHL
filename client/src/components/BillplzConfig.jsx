@@ -53,21 +53,21 @@ const BillplzConfig = () => {
     const fetchCreds = async () => {
       setIsLoading(true);
       setMessage({ type: '', text: '' });
-      try {
+    try {
         const response = await axios.get(`/api/billplz/credentials?mode=${mode}`);
-        if (response.data.success && response.data.credentials) {
+      if (response.data.success && response.data.credentials) {
           setCredentials(response.data.credentials);
         } else {
           // If no credentials found for the mode, reset the form
           handleReset();
-        }
-      } catch (error) {
+      }
+    } catch (error) {
         setMessage({ type: 'error', text: 'Failed to fetch settings.' });
         console.error('Fetch error:', error);
       } finally {
         setIsLoading(false);
-      }
-    };
+    }
+  };
 
     fetchCreds();
   }, [mode]);
@@ -94,11 +94,11 @@ const BillplzConfig = () => {
         // Test connection right after saving
         try {
             const testResponse = await axios.get(`/api/billplz/test-connection?mode=${mode}`);
-            if (testResponse.data.success) {
+        if (testResponse.data.success) {
                 setMessage({ type: 'success', text: 'Settings saved and connection successful!' });
-            } else {
+          } else {
                 setMessage({ type: 'error', text: 'Settings saved, but connection test failed.' });
-            }
+          }
         } catch (testError) {
              setMessage({ type: 'error', text: 'Settings saved, but connection test failed.' });
         }
@@ -134,15 +134,15 @@ const BillplzConfig = () => {
               >
                 Sandbox
               </button>
-              <button
+                <button
                 onClick={() => setMode('production')}
                 className={`w-full text-center py-2 rounded-md transition-all duration-300 ${mode === 'production' ? 'bg-white shadow text-indigo-600 font-semibold' : 'text-gray-500 hover:bg-gray-200'}`}
               >
                 Production
-              </button>
+                </button>
             </div>
           </div>
-          
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700">API Key</label>
@@ -161,13 +161,13 @@ const BillplzConfig = () => {
             <div>
               <label htmlFor="xSignatureKey" className="block text-sm font-medium text-gray-700">X-Signature Key</label>
               <div className="mt-1 relative">
-                <input
+              <input
                   type={showSignatureKey ? 'text' : 'password'}
                   id="xSignatureKey"
                   name="xSignatureKey"
-                  value={credentials.xSignatureKey}
+                value={credentials.xSignatureKey}
                   onChange={handleInputChange}
-                  disabled={isLoading}
+                disabled={isLoading}
                   className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="Secret key for verifying callbacks"
                 />
@@ -214,13 +214,13 @@ const BillplzConfig = () => {
               >
                 Reset
               </button>
-              <button
+                  <button
                 type="submit"
-                disabled={isLoading}
+                    disabled={isLoading}
                 className="inline-flex justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-              >
+                  >
                 {isLoading ? 'Saving...' : 'Save Configuration'}
-              </button>
+                  </button>
             </div>
           </form>
         </div>

@@ -125,12 +125,14 @@ router.get('/callback', async (req, res) => {
     encodedParams.set('client_secret', process.env.CLIENT_SECRET);
     encodedParams.set('grant_type', 'authorization_code');
     encodedParams.set('code', code);
+    encodedParams.set('user_type', 'Location');
     encodedParams.set('redirect_uri', process.env.REDIRECT_URI);
 
-    console.log('OAuth token request params:', {
+    console.log('OAuth token request params (body):', {
       client_id: process.env.CLIENT_ID,
       grant_type: 'authorization_code',
       code: code,
+      user_type: 'Location',
       redirect_uri: process.env.REDIRECT_URI
     });
 
