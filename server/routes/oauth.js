@@ -297,6 +297,15 @@ router.get('/callback', async (req, res) => {
     `);
   } catch (error) {
     console.error('Error in OAuth callback:', error.message);
+
+    // Handle 'invalid_grant' error, which often means the code was already used.
+    // This can happen on a page refresh. We can optimistically redirect to the app's homepage.
+    if (error.response?.data?.error === 'invalid_grant') {
+      console.warn('Caught "invalid_grant" error. This might be a harmless duplicate request. Redirecting to home page.');
+      // The frontend is a SPA, so redirecting to the root will load the React app,
+      // which will then handle routing to the config page.
+      return res.redirect('/'); 
+    }
     
     // Specific handling for 403 errors
     if (error.response && error.response.status === 403) {
