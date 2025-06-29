@@ -243,8 +243,16 @@ router.get('/callback', async (req, res) => {
     console.log('Provider creation data:', providerOptions.data);
 
     const providerResponse = await axios.request(providerOptions);
+    
     console.log('Provider creation response status:', providerResponse.status);
-    console.log('Provider creation response data:', providerResponse.data);
+    // Log the full response data for detailed inspection
+    console.log('Provider creation response data:', JSON.stringify(providerResponse.data, null, 2));
+
+    if (providerResponse.status >= 200 && providerResponse.status < 300) {
+      console.log('✅ SUCCESS: Custom provider appears to have been registered successfully with GHL.');
+    } else {
+      console.warn(`⚠️ WARNING: Provider registration call returned a non-success status code: ${providerResponse.status}`);
+    }
 
     // Save GHL credentials correctly
     const { access_token, refresh_token, locationId } = tokenResponse.data;
