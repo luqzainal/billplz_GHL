@@ -126,7 +126,6 @@ router.get('/callback', async (req, res) => {
     encodedParams.set('grant_type', 'authorization_code');
     encodedParams.set('code', code);
     encodedParams.set('user_type', 'Location');
-    encodedParams.set('refresh_token', '');
     encodedParams.set('redirect_uri', process.env.REDIRECT_URI);
 
     console.log('OAuth token request params (body):', {
@@ -135,7 +134,6 @@ router.get('/callback', async (req, res) => {
       grant_type: 'authorization_code',
       code: code,
       user_type: 'Location',
-      refresh_token: '(empty)',
       redirect_uri: process.env.REDIRECT_URI
     });
 
@@ -260,7 +258,7 @@ router.get('/callback', async (req, res) => {
     }
 
     // Save GHL credentials correctly
-    const { access_token, refresh_token, locationId } = tokenResponse.data;
+    const { access_token, locationId } = tokenResponse.data;
 
     console.log(`Saving GHL credentials for locationId: ${locationId}`);
 
@@ -270,7 +268,6 @@ router.get('/callback', async (req, res) => {
       {
         $set: {
           accessToken: access_token,
-          refreshToken: refresh_token,
         }
       },
       { upsert: true } // This option creates the document if it does not exist.
